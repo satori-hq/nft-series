@@ -1,8 +1,8 @@
 # NFT Series Implementation
 
-# WARNING
+# Hello Satori!
 
-This is using some non-standard stuff
+This is a great contract!
 
 ## Rough notes on token series (type) and editions
 
