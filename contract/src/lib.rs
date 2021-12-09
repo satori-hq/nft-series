@@ -122,6 +122,7 @@ impl Contract {
     ) {
 		let initial_storage_usage = env::storage_usage();
         let owner_id = env::predecessor_account_id();
+		assert_eq!(owner_id.clone(), self.tokens.owner_id, "Unauthorized");
 		let title = metadata.title.clone();
 		assert!(title.is_some(), "token_metadata.title is required");
 		let token_type_id = self.token_type_by_id.len() + 1;
@@ -159,7 +160,11 @@ impl Contract {
 		&mut self,
 		token_type_title: TokenTypeTitle,
 		receiver_id: AccountId,
+        _metadata: Option<TokenMetadata>,
 	) -> Token {
+
+		assert_eq!(env::predecessor_account_id(), self.tokens.owner_id, "Unauthorized");
+
 		let initial_storage_usage = env::storage_usage();
 
 		let token_type_id = self.token_type_by_title.get(&token_type_title).expect("no type");
@@ -174,15 +179,19 @@ impl Contract {
 		token_type.tokens.insert(&token_id);
 		self.token_type_by_id.insert(&token_type_id, &token_type);
 
+		// TODO finish adding custom metadata (if provided) to final_metadata
 		// you can add custom metadata to each token here
 		// make sure you update self.nft_token to "patch" over the type metadata
-		let metadata = Some(TokenMetadata {
+		let final_metadata = Some(TokenMetadata {
 			title: None, // ex. "Arch Nemesis: Mail Carrier" or "Parcel #5055"
 			description: None, // free-form description
 			media: None, // URL to associated media, preferably to decentralized, content-addressed storage
 			copies: None, // number of copies of this set of metadata in existence when token was minted.
 		});
-		let token = self.tokens.internal_mint(token_id.clone(), receiver_id.clone(), metadata);
+		// if let Some(metadata) = metadata {
+			
+		// }
+		let token = self.tokens.internal_mint(token_id.clone(), receiver_id.clone(), final_metadata);
 
         refund_deposit(env::storage_usage() - initial_storage_usage);
 
@@ -244,7 +253,7 @@ impl Contract {
 		let type_mint_args = memo.clone();
 		let previous_token = if let Some(type_mint_args) = type_mint_args {
 			let TypeMintArgs{token_type_title, receiver_id} = near_sdk::serde_json::from_str(&type_mint_args).expect("invalid TypeMintArgs");
-			self.nft_mint_type(token_type_title, receiver_id.clone())
+			self.nft_mint_type(token_type_title, receiver_id.clone(), None)
 		} else {
 			let prev_token = self.nft_token(token_id.clone()).expect("no token");
 			self.tokens.nft_transfer(receiver_id.clone(), token_id.clone(), Some(approval_id), memo);

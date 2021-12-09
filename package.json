@@ -8,9 +8,10 @@
     "build:all": "yarn build:contract && yarn build:market",
     "patch:config": "node ./utils/patch-config.js",
     "dev:deploy": "rm -rf neardev && (near dev-deploy || exit 0) && yarn patch:config",
-    "test:deploy": "yarn build:all && yarn dev:deploy && mocha",
 	"fix": "eslint test/ --fix",
-    "test": "mocha"
+    "test": "mocha",
+
+	"test:deploy": "yarn build:all && yarn dev:deploy && mocha"
   },
   "dependencies": {
     "mocha": "^9.0.1"
