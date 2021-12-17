@@ -144,6 +144,24 @@ impl Contract {
         refund_deposit(env::storage_usage() - initial_storage_usage);
     }
 
+	#[payable]
+    pub fn nft_patch_royalty(
+        &mut self,
+		token_type_title: TokenTypeTitle,
+        royalty: HashMap<AccountId, u32>,
+    ) {
+		let initial_storage_usage = env::storage_usage();
+        let owner_id = env::predecessor_account_id();
+		assert_eq!(owner_id.clone(), self.tokens.owner_id, "Unauthorized");
+
+		let token_type_id = self.token_type_by_title.get(&token_type_title).expect("no type");
+		let mut token_type = self.token_type_by_id.get(&token_type_id).expect("no token");
+		token_type.royalty = royalty;
+		self.token_type_by_id.insert(&token_type_id, &token_type);
+
+        refund_deposit(env::storage_usage() - initial_storage_usage);
+    }
+
 	pub fn cap_copies(
 		&mut self,
 		token_type_title: TokenTypeTitle,

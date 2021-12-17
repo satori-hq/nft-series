@@ -12,6 +12,7 @@
 #contracts
 target
 notes
+scripts
 
 # testing
 /coverage
