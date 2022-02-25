@@ -8,7 +8,7 @@
     "build:all": "yarn build:contract && yarn build:market",
     "patch:config": "node ./utils/patch-config.js",
     "dev:deploy": "rm -rf neardev && (near dev-deploy || exit 0) && yarn patch:config",
-	"fix": "eslint test/ --fix",
+	  "fix": "eslint test/ --fix",
     "test": "mocha",
 
 	"test:deploy": "yarn build:all && yarn dev:deploy && mocha"
