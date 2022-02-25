@@ -17,8 +17,17 @@ use near_sdk::serde::{Deserialize, Serialize};
 
 /// CUSTOM TYPES
 
-/// payout type for royalties to market
-pub type Payout = HashMap<AccountId, U128>;
+// /// payout type for royalties to market
+// pub type Payout = HashMap<AccountId, U128>;
+
+/// payout series for royalties to market
+#[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
+#[derive(Serialize)]
+#[serde(crate = "near_sdk::serde")]
+pub struct Payout {
+	payout: HashMap<AccountId, U128>
+}
+
 /// log type const
 pub const EVENT_JSON: &str = "EVENT_JSON:";
 /// between token_type_id and edition number e.g. 42:2 where 42 is type and 2 is edition
@@ -262,11 +271,14 @@ impl Contract {
 
         // compute payouts based on balance option
         let owner_id = previous_token.owner_id;
-        let payout = if let Some(balance) = balance {
+        let payout_struct = if let Some(balance) = balance {
 			let complete_royalty = 10_000u128;
             let balance_piece = u128::from(balance) / complete_royalty;
 			let mut total_royalty_percentage = 0;
-            let mut payout: Payout = HashMap::new();
+            // let mut payout: Payout = HashMap::new();
+			let mut payout_struct: Payout = Payout{
+				payout: HashMap::new()
+			};
 			let mut token_id_iter = token_id.split(TOKEN_DELIMETER);
 			let token_type_id = token_id_iter.next().unwrap().parse().unwrap();
             let royalty = self.token_type_by_id.get(&token_type_id).expect("no type").royalty;
@@ -278,13 +290,13 @@ impl Contract {
                 let key = k.clone();
 				// skip seller and payout once at end
                 if key != owner_id {
-                    payout.insert(key, U128(*v as u128 * balance_piece));
+                    payout_struct.payout.insert(key, U128(*v as u128 * balance_piece));
                     total_royalty_percentage += *v;
                 }
             }
             // payout to seller
-            payout.insert(owner_id.clone(), U128((complete_royalty - total_royalty_percentage as u128) * balance_piece));
-            Some(payout)
+            payout_struct.payout.insert(owner_id.clone(), U128((complete_royalty - total_royalty_percentage as u128) * balance_piece));
+            Some(payout_struct)
         } else {
             None
         };
@@ -300,7 +312,7 @@ impl Contract {
 			]
 		})).as_ref());
 
-        payout
+        payout_struct
 	}
 
 	/// CUSTOM re-implementation of near-contract-standards (not using macros)
