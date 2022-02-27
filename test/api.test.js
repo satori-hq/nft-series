@@ -21,6 +21,7 @@ const COPIES_TO_MINT = 2;
 const APPROVALS_TO_ATTEMPT = 2;
 const TOKEN_DELIMETER = ':';
 const CONTRACT_TOKEN_DELIMETER = '||';
+const BOB_ROYALTY = 1000;
 
 describe('NFT Series', function () {
 	this.timeout(60000);
@@ -28,6 +29,7 @@ describe('NFT Series', function () {
 	const now = Date.now().toString();
 	let token_type_title = 'dog-' + now;
 	let token_id;
+	console.log('contractId: ', contractId)
 
 	/// users
 	const aliceId = 'alice-' + now + '.' + contractId;
@@ -88,7 +90,7 @@ describe('NFT Series', function () {
 					copies: COPIES_TO_MINT * 2,
 				},
 				royalty: {
-					[bobId]: 1000,
+					[bobId]: BOB_ROYALTY,
 				}
 			},
 			gas,
@@ -270,7 +272,7 @@ describe('NFT Series', function () {
 		
 	});
 
-	it('should allow someone to buy the token and should have paid alice a royalty', async function () {
+	it('should allow someone to buy the token and should have paid bob a royalty', async function () {
 		const bobBalanceBefore = (await getAccountBalance(bobId)).total;
 
 		await contractAccount.functionCall({
@@ -292,7 +294,33 @@ describe('NFT Series', function () {
 			'nft_token',
 			{ token_id }
 		);
-		console.log(owner_id);
 		assert.strictEqual(owner_id, contractId);
 	});
+
+	it('should return payout object on call of nft_payout', async function () {
+		const balanceInt = 1;
+		const balance = parseNearAmount(balanceInt.toString());
+	
+		const res = await contractAccount.viewFunction(
+			contractId,
+			'nft_payout',
+			{
+				token_id,
+				balance,
+				max_len_payout: 9
+			},
+		);
+		const bobExpected = (BOB_ROYALTY * balanceInt / 10000);
+		const contractAcctExpected = (balanceInt - bobExpected);
+		const expected = {
+			[bobId]: bobExpected.toString(),
+			[contractId]: contractAcctExpected.toString(),
+		}
+		for (let key in res.payout) {
+			res.payout[key] = formatNearAmount(res.payout[key])
+		}
+		assert.deepEqual(res.payout, expected)
+
+	});
+
 });

@@ -15,6 +15,7 @@ const {
 } = nearAPI;
 
 let credentials;
+console.log('contractName: ', contractName)
 try {
 	credentials = JSON.parse(
 		fs.readFileSync(

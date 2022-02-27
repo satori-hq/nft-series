@@ -17,8 +17,14 @@ use near_sdk::serde::{Deserialize, Serialize};
 
 /// CUSTOM TYPES
 
-/// payout type for royalties to market
-pub type Payout = HashMap<AccountId, U128>;
+/// payout series for royalties to market
+#[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
+#[derive(Serialize)]
+#[serde(crate = "near_sdk::serde")]
+pub struct Payout {
+	payout: HashMap<AccountId, U128>
+}
+
 /// log type const
 pub const EVENT_JSON: &str = "EVENT_JSON:";
 /// between token_type_id and edition number e.g. 42:2 where 42 is type and 2 is edition
@@ -223,6 +229,11 @@ impl Contract {
 	) {
 		self.tokens.nft_transfer(receiver_id, token_id, approval_id, memo)
 	}
+	
+	/// convert the royalty percentage and amount to pay into a payout (U128)
+	fn royalty_to_payout(&self, royalty_percentage: u32, amount_to_pay: Balance) -> U128 {
+	    U128(royalty_percentage as u128 * amount_to_pay / 10_000u128)
+	}
 
 	/// pass through
 	#[payable]
@@ -235,6 +246,48 @@ impl Contract {
 		msg: String,
 	) -> PromiseOrValue<bool> {
 		self.tokens.nft_transfer_call(receiver_id, token_id, approval_id, memo, msg)
+	}
+
+	//calculates the payout for a token given the passed in balance. This is a view method
+	pub fn nft_payout(&self, token_id: TokenId, balance: U128, max_len_payout: u32) -> Payout {
+		//get the token object
+		let token = self.nft_token(token_id.clone()).expect("no token");
+
+		//get the owner of the token
+		let owner_id = token.owner_id;
+		//keep track of the total perpetual royalties
+		let mut total_perpetual = 0;
+		//get the u128 version of the passed in balance (which was U128 before)
+		let balance_u128 = u128::from(balance);
+		//keep track of the payout object to send back
+		let mut payout_object = Payout {
+				payout: HashMap::new()
+		};
+		//get the royalty object from token
+		let mut token_id_iter = token_id.split(TOKEN_DELIMETER);
+		let token_type_id = token_id_iter.next().unwrap().parse().unwrap();
+		let royalty = self.token_type_by_id.get(&token_type_id).expect("no type").royalty;
+		// let royalty = token.royalty;
+
+		//make sure we're not paying out to too many people (GAS limits this)
+		assert!(royalty.len() as u32 <= max_len_payout, "Market cannot payout to that many receivers");
+
+		//go through each key and value in the royalty object
+		for (k, v) in royalty.iter() {
+			//get the key
+			let key = k.clone();
+			//only insert into the payout if the key isn't the token owner (we add their payout at the end)
+			if key != owner_id {
+				payout_object.payout.insert(key, self.royalty_to_payout(*v, balance_u128));
+				total_perpetual += *v;
+			}
+		}
+
+		// payout to previous owner who gets 100% - total perpetual royalties
+		payout_object.payout.insert(owner_id, self.royalty_to_payout(10000 - total_perpetual, balance_u128));
+
+		//return the payout object
+		payout_object
 	}
 
 	/// CUSTOM royalties payout
@@ -262,11 +315,14 @@ impl Contract {
 
         // compute payouts based on balance option
         let owner_id = previous_token.owner_id;
-        let payout = if let Some(balance) = balance {
+        let payout_struct = if let Some(balance) = balance {
 			let complete_royalty = 10_000u128;
             let balance_piece = u128::from(balance) / complete_royalty;
 			let mut total_royalty_percentage = 0;
-            let mut payout: Payout = HashMap::new();
+            // let mut payout: Payout = HashMap::new();
+			let mut payout_struct: Payout = Payout{
+				payout: HashMap::new()
+			};
 			let mut token_id_iter = token_id.split(TOKEN_DELIMETER);
 			let token_type_id = token_id_iter.next().unwrap().parse().unwrap();
             let royalty = self.token_type_by_id.get(&token_type_id).expect("no type").royalty;
@@ -278,13 +334,13 @@ impl Contract {
                 let key = k.clone();
 				// skip seller and payout once at end
                 if key != owner_id {
-                    payout.insert(key, U128(*v as u128 * balance_piece));
+                    payout_struct.payout.insert(key, U128(*v as u128 * balance_piece));
                     total_royalty_percentage += *v;
                 }
             }
             // payout to seller
-            payout.insert(owner_id.clone(), U128((complete_royalty - total_royalty_percentage as u128) * balance_piece));
-            Some(payout)
+            payout_struct.payout.insert(owner_id.clone(), U128((complete_royalty - total_royalty_percentage as u128) * balance_piece));
+            Some(payout_struct)
         } else {
             None
         };
@@ -300,7 +356,7 @@ impl Contract {
 			]
 		})).as_ref());
 
-        payout
+        payout_struct
 	}
 
 	/// CUSTOM re-implementation of near-contract-standards (not using macros)
