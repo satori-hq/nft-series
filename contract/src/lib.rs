@@ -17,9 +17,6 @@ use near_sdk::serde::{Deserialize, Serialize};
 
 /// CUSTOM TYPES
 
-// /// payout type for royalties to market
-// pub type Payout = HashMap<AccountId, U128>;
-
 /// payout series for royalties to market
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
 #[derive(Serialize)]
@@ -237,10 +234,6 @@ impl Contract {
 	fn royalty_to_payout(&self, royalty_percentage: u32, amount_to_pay: Balance) -> U128 {
 	    U128(royalty_percentage as u128 * amount_to_pay / 10_000u128)
 	}
-
-	// fn royalty_to_payout(&self, royalty_percentage: u32, amount_to_pay: Balance) -> f32 {
-	// 	royalty_percentage as f32 * amount_to_pay as f32 / 10_000.0f32
-	// }
 
 	/// pass through
 	#[payable]

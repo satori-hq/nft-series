@@ -32,8 +32,6 @@ pub type TokenId = String;
 pub type TokenType = String;
 pub type FungibleTokenId = AccountId;
 pub type ContractAndTokenId = String;
-// TODO: Capital U128
-// pub type Payout = HashMap<AccountId, U128>;
 
 /// payout series for royalties to market
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]

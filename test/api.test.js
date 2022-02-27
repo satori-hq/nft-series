@@ -272,9 +272,8 @@ describe('NFT Series', function () {
 		
 	});
 
-	it('should allow someone to buy the token and should have paid alice a royalty', async function () {
+	it('should allow someone to buy the token and should have paid bob a royalty', async function () {
 		const bobBalanceBefore = (await getAccountBalance(bobId)).total;
-		const aliceBalanceBefore = (await getAccountBalance(aliceId)).total;
 
 		await contractAccount.functionCall({
 			contractId: marketId,
@@ -288,12 +287,6 @@ describe('NFT Series', function () {
 		});
 
 		const bobBalanceAfter = (await getAccountBalance(bobId)).total;
-		const aliceBalanceAfter = (await getAccountBalance(aliceId)).total;
-
-		console.log('bobBalanceBefore: ', bobBalanceBefore)
-		console.log('bobBalanceAfter: ', bobBalanceAfter)
-		console.log('aliceBalanceBefore: ', aliceBalanceBefore)
-		console.log('aliceBalanceAfter: ', aliceBalanceAfter)
 		
 		assert.strictEqual(new BN(bobBalanceAfter).sub(new BN(bobBalanceBefore)).toString(), parseNearAmount('0.1'));
 		const { owner_id } = await contractAccount.viewFunction(
@@ -301,7 +294,6 @@ describe('NFT Series', function () {
 			'nft_token',
 			{ token_id }
 		);
-		console.log('owner_id: ', owner_id, 'contractId: ', contractId);
 		assert.strictEqual(owner_id, contractId);
 	});
 
@@ -328,17 +320,7 @@ describe('NFT Series', function () {
 			res.payout[key] = formatNearAmount(res.payout[key])
 		}
 		assert.deepEqual(res.payout, expected)
-	
-		// const bobBalanceAfter = (await getAccountBalance(bobId)).total;
-		
-		// assert.strictEqual(new BN(bobBalanceAfter).sub(new BN(bobBalanceBefore)).toString(), parseNearAmount('0.1'));
-		// const { owner_id } = await contractAccount.viewFunction(
-		// 	contractId,
-		// 	'nft_token',
-		// 	{ token_id }
-		// );
-		// console.log(owner_id);
-		// assert.strictEqual(owner_id, contractId);
+
 	});
 
 });
