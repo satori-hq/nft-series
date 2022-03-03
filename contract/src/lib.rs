@@ -11,7 +11,7 @@ use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::{LazyOption, LookupMap, UnorderedMap, UnorderedSet};
 use near_sdk::json_types::{U64, U128};
 use near_sdk::{
-    env, near_bindgen, serde_json::json, Balance, AccountId, BorshStorageKey, PanicOnDefault, Promise, PromiseOrValue,
+	assert_one_yocto, log, require, env, near_bindgen, serde_json::json, Balance, AccountId, BorshStorageKey, PanicOnDefault, Promise, PromiseOrValue,
 };
 use near_sdk::serde::{Deserialize, Serialize};
 
@@ -76,6 +76,8 @@ enum StorageKey {
     TokenMetadata,
     Enumeration,
     Approval,
+		TokensPerOwner { account_hash: Vec<u8> },
+		// TokenPerOwnerInner { account_id_hash: CryptoHash },
 	// CUSTOM
     TokenTypeByTitle,
     TokenTypeById,
@@ -166,7 +168,7 @@ impl Contract {
 		&mut self,
 		token_type_title: TokenTypeTitle,
 		receiver_id: AccountId,
-        _metadata: Option<TokenMetadata>,
+    _metadata: Option<TokenMetadata>,
 	) -> Token {
 
 		assert_eq!(env::predecessor_account_id(), self.tokens.owner_id, "Unauthorized");
@@ -215,10 +217,110 @@ impl Contract {
 			
 		token
 	}
+	
+	/// Transfer token_id from `from` to `to`
+	///
+	/// Do not perform any safety checks or do any logging
+	pub fn internal_transfer_unguarded(
+		&mut self,
+		#[allow(clippy::ptr_arg)] token_id: &TokenId,
+		from: &AccountId,
+		to: &AccountId,
+	) {
+			// update owner
+			self.tokens.owner_by_id.insert(token_id, to);
 
-	/// CUSTOM re-implement core standard here, not using macros from near-contract-standards
+			// if using Enumeration standard, update old & new owner's token lists
+			if let Some(tokens_per_owner) = &mut self.tokens.tokens_per_owner {
+			// owner_tokens should always exist, so call `unwrap` without guard
+			let mut owner_tokens = tokens_per_owner.get(from).unwrap_or_else(|| {
+					env::panic_str("Unable to access tokens per owner in unguarded call.")
+			});
+			owner_tokens.remove(token_id);
+			if owner_tokens.is_empty() {
+					tokens_per_owner.remove(from);
+			} else {
+					tokens_per_owner.insert(from, &owner_tokens);
+			}
 
-	/// pass through
+			let mut receiver_tokens = tokens_per_owner.get(to).unwrap_or_else(|| {
+					UnorderedSet::new(StorageKey::TokensPerOwner {
+							account_hash: env::sha256(to.as_bytes()),
+					})
+			});
+			// let receiver_token_set = if let Some(receiver_token_set) = tokens_per_owner.get(&to) {
+			// 	receiver_token_set
+			// } else {
+			// 	UnorderedSet::new()
+			// };
+			receiver_tokens.insert(token_id);
+			tokens_per_owner.insert(to, &receiver_tokens);
+		}
+	}
+
+	/// Transfer from current owner to receiver_id, checking that sender is allowed to transfer.
+    /// Clear approvals, if approval extension being used.
+    /// Return previous owner and approvals.
+    pub fn internal_transfer(
+			&mut self,
+			sender_id: &AccountId,
+			receiver_id: &AccountId,
+			#[allow(clippy::ptr_arg)] token_id: &TokenId,
+			approval_id: Option<u64>,
+			memo: Option<String>,
+	) -> (AccountId, Option<HashMap<AccountId, u64>>) {
+			let owner_id = self.tokens.owner_by_id.get(token_id).unwrap_or_else(|| env::panic_str("Token not found"));
+
+			// clear approvals, if using Approval Management extension
+			// this will be rolled back by a panic if sending fails
+			let approved_account_ids = self.tokens.approvals_by_id.as_mut().and_then(|by_id| by_id.remove(token_id));
+
+			// check if authorized
+			let sender_id = if sender_id != &owner_id {
+				// if approval extension is NOT being used, or if token has no approved accounts
+				let app_acc_ids = approved_account_ids.as_ref().unwrap_or_else(|| env::panic_str("Unauthorized"));
+
+				// Approval extension is being used; get approval_id for sender.
+				let actual_approval_id = app_acc_ids.get(sender_id);
+
+				// Panic if sender not approved at all
+				if actual_approval_id.is_none() {
+					env::panic_str("Sender not approved");
+				}
+
+				// If approval_id included, check that it matches
+				require!(
+					approval_id.is_none() || actual_approval_id == approval_id.as_ref(),
+					format!(
+							"The actual approval_id {:?} is different from the given approval_id {:?}",
+							actual_approval_id, approval_id
+					)
+				);
+				Some(sender_id)
+			} else {
+				None
+			};
+
+			require!(&owner_id != receiver_id, "Current and next owner must differ");
+
+			self.internal_transfer_unguarded(token_id, &owner_id, receiver_id);
+
+			// NonFungibleToken::emit_transfer(&owner_id, receiver_id, token_id, sender_id, memo);
+			env::log_str(format!("{}{}", EVENT_JSON, json!({
+				"standard": "nep171",
+				"version": "1.0.0",
+				"event": "nft_transfer",
+				"data": [
+					{
+						"old_owner_id": owner_id, "new_owner_id": receiver_id, "token_ids": [token_id]
+					}
+				]
+			})).as_ref());
+
+			// return previous owner & approvals
+			(owner_id, approved_account_ids)
+	}
+
 	#[payable]
 	pub fn nft_transfer(
 		&mut self,
@@ -227,13 +329,18 @@ impl Contract {
 		approval_id: Option<u64>,
 		memo: Option<String>,
 	) {
-		self.tokens.nft_transfer(receiver_id, token_id, approval_id, memo)
+		assert_one_yocto();
+		let sender_id = env::predecessor_account_id();
+		self.internal_transfer(&sender_id, &receiver_id, &token_id, approval_id, memo);
 	}
 	
 	/// convert the royalty percentage and amount to pay into a payout (U128)
 	fn royalty_to_payout(&self, royalty_percentage: u32, amount_to_pay: Balance) -> U128 {
 	    U128(royalty_percentage as u128 * amount_to_pay / 10_000u128)
 	}
+
+	/// CUSTOM re-implement core standard here, not using macros from near-contract-standards
+
 
 	/// pass through
 	#[payable]
@@ -305,6 +412,7 @@ impl Contract {
 		// lazy minting?
 		let type_mint_args = memo.clone();
 		let previous_token = if let Some(type_mint_args) = type_mint_args {
+			log!(format!("type_mint_args: {}", type_mint_args));
 			let TypeMintArgs{token_type_title, receiver_id} = near_sdk::serde_json::from_str(&type_mint_args).expect("invalid TypeMintArgs");
 			self.nft_mint_type(token_type_title, receiver_id.clone(), None)
 		} else {
@@ -482,7 +590,7 @@ impl Contract {
 	) -> Vec<TokenTypeJson> {
         let start_index: u128 = from_index.map(From::from).unwrap_or_default();
         assert!(
-            (self.token_type_by_id.len() as u128) > start_index,
+            (self.token_type_by_id.len() as u128) >= start_index,
             "Out of bounds, please use a smaller from_index."
         );
         let limit = limit.map(|v| v as usize).unwrap_or(usize::MAX);
@@ -516,7 +624,7 @@ impl Contract {
         let start_index: u128 = from_index.map(From::from).unwrap_or_default();
 		let tokens = self.token_type_by_id.get(&self.token_type_by_title.get(&token_type_title).expect("no type")).expect("no type").tokens;
         assert!(
-            (tokens.len() as u128) > start_index,
+            (tokens.len() as u128) >= start_index,
             "Out of bounds, please use a smaller from_index."
         );
         let limit = limit.map(|v| v as usize).unwrap_or(usize::MAX);
