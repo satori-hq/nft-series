@@ -448,7 +448,11 @@ impl Contract {
                 }
             }
             // payout to seller
-            payout_struct.payout.insert(owner_id.clone(), U128((complete_royalty - total_royalty_percentage as u128) * balance_piece));
+						let seller_payout = (complete_royalty - total_royalty_percentage as u128) * balance_piece;
+						if seller_payout > 0 {
+							payout_struct.payout.insert(owner_id.clone(), U128(seller_payout));
+						}
+            // payout_struct.payout.insert(owner_id.clone(), U128((complete_royalty - total_royalty_percentage as u128) * balance_piece));
             Some(payout_struct)
         } else {
             None
