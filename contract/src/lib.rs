@@ -392,7 +392,10 @@ impl Contract {
 		}
 
 		// payout to previous owner who gets 100% - total perpetual royalties
-		payout_object.payout.insert(owner_id, self.royalty_to_payout(10000 - total_perpetual, balance_u128));
+		let owner_payout = self.royalty_to_payout(10000 - total_perpetual, balance_u128);
+		if u128::from(owner_payout) > 0 {
+			payout_object.payout.insert(owner_id, owner_payout);
+		}
 
 		//return the payout object
 		payout_object
