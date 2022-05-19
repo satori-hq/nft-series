@@ -115,13 +115,33 @@ impl Contract {
                 Some(StorageKey::Enumeration),
                 Some(StorageKey::Approval),
             ),
-			token_type_by_id: UnorderedMap::new(StorageKey::TokenTypeById),
-			token_type_by_title: LookupMap::new(StorageKey::TokenTypeByTitle),
+						token_type_by_id: UnorderedMap::new(StorageKey::TokenTypeById),
+						token_type_by_title: LookupMap::new(StorageKey::TokenTypeByTitle),
             metadata: LazyOption::new(StorageKey::Metadata, Some(&metadata)),
         }
     }
 
 	// CUSTOM
+
+		#[payable]
+		pub fn patch_base_uri(
+				&mut self,
+				base_uri: Option<String>,
+		) {
+			let initial_storage_usage = env::storage_usage();
+			let owner_id = env::predecessor_account_id();
+			assert_eq!(owner_id.clone(), self.tokens.owner_id, "Unauthorized");
+
+			if let Some(base_uri) = base_uri {
+				let metadata = self.metadata.get();
+				if let Some(mut metadata) = metadata {
+					metadata.base_uri = Some(base_uri);
+					self.metadata.set(&metadata);
+				}
+			}
+			let amt_to_refund = if env::storage_usage() > initial_storage_usage { env::storage_usage() - initial_storage_usage } else { initial_storage_usage - env::storage_usage() };
+			refund_deposit(amt_to_refund);
+		}
     
     #[payable]
     pub fn nft_create_type(

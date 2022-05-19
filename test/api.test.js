@@ -86,6 +86,27 @@ describe("NFT Series", function () {
     assert.notStrictEqual(state.code_hash, "11111111111111111111111111111111");
   });
 
+  it("should allow the owner to update the contract's base_uri", async function () {
+    const updatedBaseUri = "https://ipfs.io";
+
+    await contractAccount.functionCall({
+      contractId,
+      methodName: "patch_base_uri",
+      args: {
+        base_uri: updatedBaseUri,
+      },
+      gas,
+      attachedDeposit: parseNearAmount("0.1"),
+    });
+
+    const metadata_updated = await contractAccount.viewFunction(
+      contractId,
+      "nft_metadata"
+    );
+
+    assert.strictEqual(metadata_updated.base_uri, updatedBaseUri);
+  });
+
   it("should allow someone to create a type", async function () {
     await contractAccount.functionCall({
       contractId,
