@@ -165,6 +165,40 @@ impl Contract {
 	}
 
 	#[payable]
+    pub fn nft_patch_type(
+        &mut self,
+				token_type_title: TokenTypeTitle,
+				metadata: Option<TokenMetadata>,
+        royalty: Option<HashMap<AccountId, u32>>,
+    ) {
+		let initial_storage_usage = env::storage_usage();
+    let owner_id = env::predecessor_account_id();
+		assert_eq!(owner_id.clone(), self.tokens.owner_id, "Unauthorized");
+
+		let token_type_id = self.token_type_by_title.get(&token_type_title).expect("no type");
+		let mut token_type = self.token_type_by_id.get(&token_type_id).expect("no token");
+
+		if let Some(metadata) = metadata {
+			if metadata.title.is_some() {
+				token_type.metadata.title = metadata.title
+			}
+			// don't validate that description is_some, as description can be none
+			token_type.metadata.description = metadata.description;
+			if metadata.media.is_some() {
+				token_type.metadata.media = metadata.media
+			}
+			// don't allow to patch copies (this must go through `cap_copies`)
+		}
+		if let Some(royalty) = royalty {
+			token_type.royalty = royalty
+		}
+		self.token_type_by_id.insert(&token_type_id, &token_type);
+
+		let amt_to_refund = if env::storage_usage() > initial_storage_usage { env::storage_usage() - initial_storage_usage } else { initial_storage_usage - env::storage_usage() };
+    refund_deposit(amt_to_refund);
+  }
+
+	#[payable]
 	pub fn nft_mint_type(
 		&mut self,
 		token_type_title: TokenTypeTitle,
