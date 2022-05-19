@@ -33,28 +33,11 @@ pub const TOKEN_DELIMETER: char = ':';
 pub const TITLE_DELIMETER: &str = " — ";
 /// e.g. "Title — 2/10" where 10 is max copies
 pub const EDITION_DELIMETER: &str = "/";
-/// between asset_id, supply_remaining and file_type e.g. "1:10:jpg" where 1 is asset ID, 10 is supply remaining & jpg is file type
-pub const ASSET_DETAIL_DELIMETER: char = ':';
 
 pub type TokenTypeId = u64;
 pub type TokenTypeTitle = String;
 
-// #[derive(BorshDeserialize, BorshSerialize)]
-// #[derive(Serialize, Deserialize)]
-// #[serde(crate = "near_sdk::serde")]
-// pub enum AssetDetail {
-// 	AssetId(String),
-// 	SupplyRemaining(i128),
-// 	FileType(String),
-// }
-
 pub type AssetDetail = Vec<u128>; // E.g. [1, 10] where 1 is asset_id and 10 is supply_remaining
-
-#[derive(BorshDeserialize, BorshSerialize)]
-pub struct TokenTypeAssets {
-	token_type_title: TokenTypeTitle,
-	receiver_id: AccountId,
-}
 
 #[derive(BorshDeserialize, BorshSerialize)]
 pub struct TokenType {
