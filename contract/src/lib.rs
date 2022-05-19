@@ -33,16 +33,40 @@ pub const TOKEN_DELIMETER: char = ':';
 pub const TITLE_DELIMETER: &str = " — ";
 /// e.g. "Title — 2/10" where 10 is max copies
 pub const EDITION_DELIMETER: &str = "/";
+/// between asset_id, supply_remaining and file_type e.g. "1:10:jpg" where 1 is asset ID, 10 is supply remaining & jpg is file type
+pub const ASSET_DETAIL_DELIMETER: char = ':';
+
 pub type TokenTypeId = u64;
 pub type TokenTypeTitle = String;
+
+// #[derive(BorshDeserialize, BorshSerialize)]
+// #[derive(Serialize, Deserialize)]
+// #[serde(crate = "near_sdk::serde")]
+// pub enum AssetDetail {
+// 	AssetId(String),
+// 	SupplyRemaining(i128),
+// 	FileType(String),
+// }
+
+pub type AssetDetail = Vec<u128>; // E.g. [1, 10] where 1 is asset_id and 10 is supply_remaining
+
+#[derive(BorshDeserialize, BorshSerialize)]
+pub struct TokenTypeAssets {
+	token_type_title: TokenTypeTitle,
+	receiver_id: AccountId,
+}
+
 #[derive(BorshDeserialize, BorshSerialize)]
 pub struct TokenType {
 	metadata: TokenMetadata,
+	asset_filetypes: Vec<String>, // e.g. jpg, png, mp4
+	asset_distribution: Vec<AssetDetail>, 
 	owner_id: AccountId,
 	royalty: HashMap<AccountId, u32>,
 	tokens: UnorderedSet<TokenId>,
 	approved_market_id: Option<AccountId>,
 }
+
 #[derive(Serialize, Deserialize)]
 #[serde(crate = "near_sdk::serde")]
 pub struct TokenTypeJson {
@@ -50,6 +74,7 @@ pub struct TokenTypeJson {
 	owner_id: AccountId,
 	royalty: HashMap<AccountId, u32>,
 }
+
 #[derive(Serialize, Deserialize)]
 #[serde(crate = "near_sdk::serde")]
 pub struct TypeMintArgs {
@@ -148,18 +173,33 @@ impl Contract {
         &mut self,
         metadata: TokenMetadata,
         royalty: HashMap<AccountId, u32>,
+				asset_filetypes: Vec<String>,
+				asset_distribution: Vec<AssetDetail>,
     ) {
 		let initial_storage_usage = env::storage_usage();
         let owner_id = env::predecessor_account_id();
 		assert_eq!(owner_id.clone(), self.tokens.owner_id, "Unauthorized");
 		let title = metadata.title.clone();
 		assert!(title.is_some(), "token_metadata.title is required");
+		assert!(!asset_distribution.is_empty(), "asset_distribution must not be empty");
+		assert_eq!(asset_filetypes.len(), asset_distribution.len(), "asset_filetypes and asset_distribution must be same length");
+
+		// validate asset_distribution elements (must contain two integers: asset_id and supply_remaining)
+		for distr_detail in &asset_distribution {
+			let asset_id = distr_detail.get(0);
+			assert!(asset_id.is_some(), "Asset ID must be provided");
+			let supply_remaining = distr_detail.get(1);
+			assert!(supply_remaining.is_some(), "Supply remaining must be provided");
+		}
+
 		let token_type_id = self.token_type_by_id.len() + 1;
         assert!(self.token_type_by_title.insert(&title.unwrap(), &token_type_id).is_none(), "token_metadata.title exists");
         self.token_type_by_id.insert(&token_type_id, &TokenType{
 			metadata,
 			owner_id,
 			royalty,
+			asset_filetypes,
+			asset_distribution,
 			tokens: UnorderedSet::new(
 				StorageKey::TokensByTypeInner {
 					token_type_id
