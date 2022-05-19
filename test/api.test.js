@@ -117,6 +117,11 @@ describe("NFT Series", function () {
           media: "https://placedog.net/500",
           copies: typeCopies,
         },
+        asset_filetypes: ["jpg", "png"],
+        asset_distribution: [
+          [1, 10],
+          [2, 20],
+        ],
         royalty: {
           [bobId]: BOB_ROYALTY,
         },
