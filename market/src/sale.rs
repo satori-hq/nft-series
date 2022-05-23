@@ -97,6 +97,7 @@ impl Contract {
     ) {
         let contract_id: AccountId = nft_contract_id;
         let contract_and_token_id = format!("{}{}{}", contract_id, DELIMETER, token_id);
+        log!("contract and token id in offer: {}", &contract_and_token_id);
         let sale = self.sales.get(&contract_and_token_id).expect("No sale");
         let buyer_id = env::predecessor_account_id();
         if sale.is_series.is_none() {
