@@ -43,6 +43,8 @@ pub struct TokenMetadata {
     pub description: Option<String>, // free-form description
     pub media: Option<String>, // URL to associated media, preferably to decentralized, content-addressed storage
     pub copies: Option<u64>, // number of copies of this set of metadata in existence when token was minted.
+    pub asset_id: Option<String>,
+    pub file_type: Option<String>,
 }
 
 /// Offers details on the contract-level metadata.

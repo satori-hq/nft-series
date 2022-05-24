@@ -42,14 +42,10 @@ pub const TITLE_DELIMETER: &str = " — ";
 /// e.g. "Title — 2/10" where 10 is max copies
 pub const EDITION_DELIMETER: &str = "/";
 
-pub type TokenTypeId = u64;
-pub type TokenTypeTitle = String;
-
-pub type AssetDetail = Vec<u64>; // E.g. [1, 10] where 1 is asset_id and 10 is supply_remaining
-
 #[derive(BorshDeserialize, BorshSerialize)]
 pub struct TokenType {
 	metadata: TokenMetadata,
+	asset_count: u64,
 	asset_filetypes: Vec<String>, // e.g. jpg, png, mp4
 	asset_distribution: Vec<AssetDetail>, 
 	owner_id: AccountId,
