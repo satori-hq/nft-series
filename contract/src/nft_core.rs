@@ -234,6 +234,7 @@ impl NonFungibleToken {
                     copies: Some(1),
                     asset_id: Some(String::from("1")),
                     file_type: Some(String::from("jpg")),
+                    extra: Some(String::from("1.json")),
                 },
             );
         }
@@ -520,9 +521,9 @@ impl NonFungibleTokenCore for Contract {
 		// CUSTOM (switch metadata for the token_type metadata)
 		let mut token_id_iter = token_id.split(TOKEN_DELIMETER);
 		let token_type_id = token_id_iter.next().unwrap().parse().unwrap();
-		// let token_type = self.token_type_by_id.get(&token_type_id).expect("no token");
 		// make edition titles nice for showing in wallet
-		let mut metadata = self.token_type_by_id.get(&token_type_id).unwrap().metadata;
+        let token_type = self.token_type_by_id.get(&token_type_id).unwrap();
+		let mut metadata = token_type.metadata;
 		let copies = metadata.copies;
 		if let Some(copies) = copies {
 			metadata.title = Some(
@@ -540,12 +541,13 @@ impl NonFungibleTokenCore for Contract {
         let token = self.tokens.token_metadata_by_id.as_ref().unwrap().get(&token_id);
         let asset_id = &token.as_ref().unwrap().asset_id;
         let file_type = &token.as_ref().unwrap().file_type;
-		// let mut file_type = token_type.asset_filetypes.get(0).unwrap();
-		// if token_type.asset_count > 1 {
-		// 	// handle multiple assets (not allowed currently), update asset_id & file_type accordingly
-        //     asset_id = &metadata.asset_id.unwrap();
-		// }
-		metadata.media = Some(format!("{}/{}.{}", metadata.media.unwrap(), asset_id.clone().unwrap(), file_type.clone().unwrap()));
+        let media = metadata.media.unwrap();
+        // media cid for this series + asset token ID + filetype maps to a media asset on IPFS
+		metadata.media = Some(format!("{}/{}.{}", media, asset_id.clone().unwrap(), file_type.clone().unwrap()));
+        if token_type.json {
+            // media cid for this series + asset token ID + .json maps to a json asset on IPFS
+            metadata.extra = Some(format!("{}/{}.json", media, asset_id.clone().unwrap()));
+        }
 		
 		// CUSTOM
 		// implement this if you need to combine individual token metadata

@@ -45,6 +45,7 @@ pub struct TokenMetadata {
     pub copies: Option<u64>, // number of copies of this set of metadata in existence when token was minted.
     pub asset_id: Option<String>,
     pub file_type: Option<String>,
+    pub extra: Option<String>, // anything extra the NFT wants to store on-chain. Can be stringified JSON.
 }
 
 /// Offers details on the contract-level metadata.

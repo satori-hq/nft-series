@@ -26,7 +26,7 @@ const CONTRACT_TOKEN_DELIMETER = "||";
 const BOB_ROYALTY = 1000;
 
 describe("NFT Series", function () {
-  this.timeout(60000);
+  this.timeout(120000);
 
   const now = Date.now().toString();
   let token_type_title_non_gen = "dog-non-gen" + now;
@@ -35,10 +35,13 @@ describe("NFT Series", function () {
   let token_type_title_fully_gen_single_filetype =
     "dog-fully-gen-single-filetype" + now;
 
-  console.log("token_type_title_semi_gen: ", token_type_title_semi_gen);
   let token_id;
-  console.log("contractId: ", contractId);
+
   let typeCopies = COPIES_TO_MINT * 2;
+
+  let asset_filetypes = ["jpg"];
+  let asset_distribution;
+  let json = true;
 
   /// users
   const aliceId = "alice-" + now + "." + contractId;
@@ -114,113 +117,448 @@ describe("NFT Series", function () {
     assert.strictEqual(metadata_updated.base_uri, updatedBaseUri);
   });
 
-  // it("should allow someone to create a non-generative type", async function () {
-  //   typeCopies = 10;
-  //   await contractAccount.functionCall({
-  //     contractId,
-  //     methodName: "nft_create_type",
-  //     args: {
-  //       metadata: {
-  //         title: token_type_title_non_gen,
-  //         media: "bafkreibael4nenayqy45ijuvgcpkmyscbt3q35mtbzbeabopmugdwr5r64",
-  //         copies: typeCopies,
-  //       },
-  //       asset_count: 1,
-  //       asset_filetypes: ["jpg"],
-  //       // asset_distribution: [
-  //       //   [1, typeCopies], // [asset_id, supply_remaining]
-  //       // ],
-  //       royalty: {
-  //         [bobId]: BOB_ROYALTY,
-  //       },
-  //     },
-  //     gas,
-  //     attachedDeposit: parseNearAmount("0.1"),
-  //   });
+  it("should error if owner attempts to create a type with invalid arguments", async function () {
+    typeCopies = 10;
 
-  //   const token_type = await contractAccount.viewFunction(
-  //     contractId,
-  //     "nft_get_type",
-  //     {
-  //       token_type_title: token_type_title_non_gen,
-  //     }
-  //   );
+    // no `json` field
+    let invalidArgs = {
+      metadata: {
+        title: token_type_title_non_gen,
+        media: "bafkreibael4nenayqy45ijuvgcpkmyscbt3q35mtbzbeabopmugdwr5r64",
+        copies: typeCopies,
+      },
+      asset_count: 1,
+      asset_filetypes,
+      royalty: {
+        [bobId]: BOB_ROYALTY,
+      },
+    };
 
-  //   assert.strictEqual(token_type.owner_id, contractId);
-  //   assert.strictEqual(token_type.metadata.copies, typeCopies);
-  //   assert.strictEqual(token_type.royalty[bobId], 1000);
-  // });
+    try {
+      await testUtils.createType(
+        contractAccount,
+        contractId,
+        invalidArgs,
+        parseNearAmount("3")
+      );
+      assert(false);
+    } catch {
+      assert(true);
+    }
 
-  // it("should allow the owner to mint tokens of a non-generative type", async function () {
-  //   // const stateBefore = await (await getAccount(contractId)).state();
-  //   // console.log('stateBefore', stateBefore)
-  //   const contractBalanceBefore = (await getAccountBalance(contractId))
-  //     .available;
+    // no `metadata.title`
+    invalidArgs = {
+      metadata: {
+        media: "bafkreibael4nenayqy45ijuvgcpkmyscbt3q35mtbzbeabopmugdwr5r64",
+        copies: typeCopies,
+      },
+      asset_count: 1,
+      asset_filetypes,
+      royalty: {
+        [bobId]: BOB_ROYALTY,
+      },
+      json,
+    };
 
-  //   COPIES_TO_MINT = 5;
-  //   for (let i = 0; i < COPIES_TO_MINT; i++) {
-  //     await contractAccount.functionCall({
-  //       contractId,
-  //       methodName: "nft_mint_type",
-  //       args: {
-  //         token_type_title: token_type_title_non_gen,
-  //         receiver_id: contractId,
-  //       },
-  //       gas,
-  //       attachedDeposit: parseNearAmount("0.1"),
-  //     });
-  //   }
+    try {
+      await testUtils.createType(
+        contractAccount,
+        contractId,
+        invalidArgs,
+        parseNearAmount("3")
+      );
+      assert(false);
+    } catch {
+      assert(true);
+    }
 
-  //   const contractBalanceAfter = (await getAccountBalance(contractId))
-  //     .available;
-  //   console.log(
-  //     "\n\n\n Contract Balance Available",
-  //     formatNearAmount(
-  //       new BN(contractBalanceBefore)
-  //         .sub(new BN(contractBalanceAfter))
-  //         .toString(),
-  //       6
-  //     )
-  //   );
+    // invalid `metadata.title`
+    invalidArgs = {
+      ...invalidArgs,
+      metadata: {
+        title: 1,
+        media: "bafkreibael4nenayqy45ijuvgcpkmyscbt3q35mtbzbeabopmugdwr5r64",
+        copies: typeCopies,
+      },
+    };
 
-  //   // const stateAfter = await (await getAccount(contractId)).state();
-  //   // console.log('stateAfter', stateAfter)
+    try {
+      await testUtils.createType(
+        contractAccount,
+        contractId,
+        invalidArgs,
+        parseNearAmount("3")
+      );
+      assert(false);
+    } catch {
+      assert(true);
+    }
 
-  //   const supply_for_type = await contractAccount.viewFunction(
-  //     contractId,
-  //     "nft_supply_for_type",
-  //     {
-  //       token_type_title: token_type_title_non_gen,
-  //     }
-  //   );
+    // no `metadata.media`
+    invalidArgs = {
+      ...invalidArgs,
+      metadata: {
+        title: token_type_title_non_gen,
+        copies: typeCopies,
+      },
+    };
 
-  //   assert.strictEqual(parseInt(supply_for_type, 10), COPIES_TO_MINT);
+    try {
+      await testUtils.createType(
+        contractAccount,
+        contractId,
+        invalidArgs,
+        parseNearAmount("3")
+      );
+      assert(false);
+    } catch {
+      assert(true);
+    }
 
-  //   const tokens = await contractAccount.viewFunction(
-  //     contractId,
-  //     "nft_tokens_by_type",
-  //     {
-  //       token_type_title: token_type_title_non_gen,
-  //     }
-  //   );
-  //   console.log("non-gen tokens: ", tokens);
-  //   const [TOKEN_DELIMETER, TITLE_DELIMETER, EDITION_DELIMETER] =
-  //     await contractAccount.viewFunction(contractId, "nft_get_type_format");
-  //   const {
-  //     token_id: _token_id,
-  //     owner_id,
-  //     metadata: { title, copies },
-  //   } = tokens[tokens.length - 1];
-  //   assert.strictEqual(owner_id, contractId);
-  //   token_id = _token_id;
-  //   const formattedTitle = `${token_type_title_non_gen}${TITLE_DELIMETER}${
-  //     token_id.split(TOKEN_DELIMETER)[1]
-  //   }${EDITION_DELIMETER}${copies}`;
-  //   assert.strictEqual(title, formattedTitle);
-  // });
+    // invalid `metadata.media`
+    invalidArgs = {
+      ...invalidArgs,
+      metadata: {
+        title: token_type_title_non_gen,
+        media: 1,
+        copies: typeCopies,
+      },
+    };
 
-  it("should allow someone to create a semi-generative type with large asset_filetypes and asset_distribution arrays", async function () {
-    typeCopies = 5_000;
+    try {
+      await testUtils.createType(
+        contractAccount,
+        contractId,
+        invalidArgs,
+        parseNearAmount("3")
+      );
+      assert(false);
+    } catch {
+      assert(true);
+    }
+
+    // no `metadata.copies`
+    invalidArgs = {
+      ...invalidArgs,
+      metadata: {
+        title: token_type_title_non_gen,
+        media: "bafkreibael4nenayqy45ijuvgcpkmyscbt3q35mtbzbeabopmugdwr5r64",
+      },
+    };
+
+    try {
+      await testUtils.createType(
+        contractAccount,
+        contractId,
+        invalidArgs,
+        parseNearAmount("3")
+      );
+      assert(false);
+    } catch {
+      assert(true);
+    }
+
+    // invalid `metadata.copies`
+    invalidArgs = {
+      ...invalidArgs,
+      metadata: {
+        title: token_type_title_non_gen,
+        media: "bafkreibael4nenayqy45ijuvgcpkmyscbt3q35mtbzbeabopmugdwr5r64",
+        copies: typeCopies.toString(),
+      },
+    };
+
+    try {
+      await testUtils.createType(
+        contractAccount,
+        contractId,
+        invalidArgs,
+        parseNearAmount("3")
+      );
+      assert(false);
+    } catch {
+      assert(true);
+    }
+
+    // invalid length of asset_filetypes arr (should be 1 or asset_count)
+    asset_filetypes = Array(9).fill("jpg");
+
+    invalidArgs = {
+      metadata: {
+        title: token_type_title_non_gen,
+        media: "bafkreibael4nenayqy45ijuvgcpkmyscbt3q35mtbzbeabopmugdwr5r64",
+        copies: typeCopies,
+      },
+      asset_count: 10,
+      asset_filetypes,
+      royalty: {
+        [bobId]: BOB_ROYALTY,
+      },
+      json,
+    };
+
+    try {
+      await testUtils.createType(
+        contractAccount,
+        contractId,
+        invalidArgs,
+        parseNearAmount("3")
+      );
+      assert(false);
+    } catch {
+      assert(true);
+    }
+
+    // valid `asset_distribution` array not provided for semi-generative series
+    asset_filetypes = Array(typeCopies / 2).fill("jpg");
+
+    invalidArgs = {
+      metadata: {
+        title: token_type_title_semi_gen,
+        media: "bafkreibael4nenayqy45ijuvgcpkmyscbt3q35mtbzbeabopmugdwr5r64",
+        copies: typeCopies,
+      },
+      asset_count: typeCopies / 2,
+      asset_filetypes,
+      // asset_distribution not present
+      royalty: {
+        [bobId]: BOB_ROYALTY,
+      },
+      json,
+    };
+
+    try {
+      await testUtils.createType(
+        contractAccount,
+        contractId,
+        invalidArgs,
+        parseNearAmount("3")
+      );
+      assert(false);
+    } catch {
+      assert(true);
+    }
+
+    // empty array
+    invalidArgs = {
+      ...invalidArgs,
+      asset_distribution: [],
+    };
+
+    try {
+      await testUtils.createType(
+        contractAccount,
+        contractId,
+        invalidArgs,
+        parseNearAmount("3")
+      );
+      assert(false);
+    } catch {
+      assert(true);
+    }
+
+    // must be of length asset_count
+    invalidArgs = {
+      ...invalidArgs,
+      asset_distribution: [[1, typeCopies]],
+    };
+
+    try {
+      await testUtils.createType(
+        contractAccount,
+        contractId,
+        invalidArgs,
+        parseNearAmount("3")
+      );
+      assert(false);
+    } catch {
+      assert(true);
+    }
+
+    // second elements (`supply_remaining`) of all asset_distribution elements (sub-arrays) must add up to `metadata.copies`
+    asset_filetypes = ["jpg", "png"];
+
+    invalidArgs = {
+      ...invalidArgs,
+      asset_count: 2,
+      asset_filetypes,
+      asset_distribution: [
+        [1, typeCopies / 2],
+        [2, typeCopies / 2 + 1],
+      ],
+    };
+
+    try {
+      await testUtils.createType(
+        contractAccount,
+        contractId,
+        invalidArgs,
+        parseNearAmount("3")
+      );
+      assert(false);
+    } catch {
+      assert(true);
+    }
+
+    // invalid asset_id (`null`)
+    invalidArgs = {
+      ...invalidArgs,
+      asset_distribution: [
+        [null, typeCopies / 2],
+        [2, typeCopies / 2],
+      ],
+    };
+
+    try {
+      await testUtils.createType(
+        contractAccount,
+        contractId,
+        invalidArgs,
+        parseNearAmount("3")
+      );
+      assert(false);
+    } catch {
+      assert(true);
+    }
+
+    // `asset_distribution` array provided for non-generative series
+    asset_filetypes = ["jpg"];
+
+    invalidArgs = {
+      metadata: {
+        title: token_type_title_non_gen,
+        media: "bafkreibael4nenayqy45ijuvgcpkmyscbt3q35mtbzbeabopmugdwr5r64",
+        copies: typeCopies,
+      },
+      asset_count: 1,
+      asset_filetypes,
+      asset_distribution: [[1, 10]],
+      json,
+      royalty: {
+        [bobId]: BOB_ROYALTY,
+      },
+    };
+
+    try {
+      await testUtils.createType(
+        contractAccount,
+        contractId,
+        invalidArgs,
+        parseNearAmount("3")
+      );
+      assert(false);
+    } catch {
+      assert(true);
+    }
+  });
+
+  it("should allow owner to create a non-generative type", async function () {
+    typeCopies = 10;
+    asset_filetypes = ["jpg"];
+    await contractAccount.functionCall({
+      contractId,
+      methodName: "nft_create_type",
+      args: {
+        metadata: {
+          title: token_type_title_non_gen,
+          media: "bafkreibael4nenayqy45ijuvgcpkmyscbt3q35mtbzbeabopmugdwr5r64",
+          copies: typeCopies,
+        },
+        asset_count: 1,
+        asset_filetypes,
+        json,
+        royalty: {
+          [bobId]: BOB_ROYALTY,
+        },
+      },
+      gas,
+      attachedDeposit: parseNearAmount("0.1"),
+    });
+
+    const token_type = await contractAccount.viewFunction(
+      contractId,
+      "nft_get_type",
+      {
+        token_type_title: token_type_title_non_gen,
+      }
+    );
+
+    assert.strictEqual(token_type.owner_id, contractId);
+    assert.strictEqual(token_type.metadata.copies, typeCopies);
+    assert.strictEqual(token_type.royalty[bobId], 1000);
+  });
+
+  it("should allow the owner to mint correctly formatted tokens of a non-generative type", async function () {
+    COPIES_TO_MINT = 5;
+    for (let i = 0; i < COPIES_TO_MINT; i++) {
+      await contractAccount.functionCall({
+        contractId,
+        methodName: "nft_mint_type",
+        args: {
+          token_type_title: token_type_title_non_gen,
+          receiver_id: contractId,
+        },
+        gas,
+        attachedDeposit: parseNearAmount("0.1"),
+      });
+    }
+
+    const supply_for_type = await contractAccount.viewFunction(
+      contractId,
+      "nft_supply_for_type",
+      {
+        token_type_title: token_type_title_non_gen,
+      }
+    );
+
+    assert.strictEqual(parseInt(supply_for_type, 10), COPIES_TO_MINT);
+
+    const tokens = await contractAccount.viewFunction(
+      contractId,
+      "nft_tokens_by_type",
+      {
+        token_type_title: token_type_title_non_gen,
+      }
+    );
+
+    // console.log("non-gen tokens: ", tokens);
+
+    const [TOKEN_DELIMETER, TITLE_DELIMETER, EDITION_DELIMETER] =
+      await contractAccount.viewFunction(contractId, "nft_get_type_format");
+
+    const {
+      token_id: _token_id,
+      owner_id,
+      metadata: { title, copies },
+    } = tokens[tokens.length - 1];
+
+    // check for correct owner
+    assert.strictEqual(owner_id, contractId);
+    token_id = _token_id;
+    const formattedTitle = `${token_type_title_non_gen}${TITLE_DELIMETER}${
+      token_id.split(TOKEN_DELIMETER)[1]
+    }${EDITION_DELIMETER}${copies}`;
+
+    // check for correctly formatted title
+    assert.strictEqual(title, formattedTitle);
+
+    // check that all tokens have correct filetypes for `media` & `extra`
+    tokens.forEach((token) => {
+      if (!token.metadata.media.endsWith(asset_filetypes[0])) assert(false);
+      else if (json && !token.metadata.extra.endsWith(".json")) assert(false);
+    });
+  });
+
+  it("should allow owner to create a semi-generative type", async function () {
+    // typeCopies = 10_000; // USE THIS TO TEST LARGE ARRAYS
+    typeCopies = 6;
+    // asset_filetypes = ["png"].concat(Array(typeCopies - 2).fill("jpg")); // USE THIS TO TEST LARGE ARRAYS
+    asset_filetypes = ["png", "mp4"];
+    // asset_distribution = [[1, 2]].concat(Array(typeCopies - 2).fill([1, 1])) // USE THIS TO TEST LARGE ARRAYS
+    asset_distribution = [
+      [1, 4],
+      [2, 2],
+    ];
     await contractAccount.functionCall({
       contractId,
       methodName: "nft_create_type",
@@ -230,9 +568,10 @@ describe("NFT Series", function () {
           media: "bafkreibael4nenayqy45ijuvgcpkmyscbt3q35mtbzbeabopmugdwr5r64",
           copies: typeCopies,
         },
-        asset_count: typeCopies - 1,
-        asset_filetypes: ["png"].concat(Array(typeCopies - 2).fill("jpg")),
-        asset_distribution: [[1, 2]].concat(Array(typeCopies - 2).fill([1, 1])),
+        asset_count: 2,
+        asset_filetypes,
+        asset_distribution,
+        json,
         royalty: {
           [bobId]: BOB_ROYALTY,
         },
@@ -248,18 +587,15 @@ describe("NFT Series", function () {
         token_type_title: token_type_title_semi_gen,
       }
     );
-    console.log("token type line 249: ", token_type);
+    // console.log("token type line 249: ", token_type);
 
     assert.strictEqual(token_type.owner_id, contractId);
     assert.strictEqual(token_type.metadata.copies, typeCopies);
     assert.strictEqual(token_type.royalty[bobId], 1000);
   });
 
-  it("should allow the owner to mint tokens of a semi-generative type", async function () {
-    const contractBalanceBefore = (await getAccountBalance(contractId))
-      .available;
-
-    COPIES_TO_MINT = 10;
+  it("should allow the owner to mint correctly formatted tokens of a semi-generative type", async function () {
+    COPIES_TO_MINT = typeCopies;
     for (let i = 0; i < COPIES_TO_MINT; i++) {
       await contractAccount.functionCall({
         contractId,
@@ -273,18 +609,6 @@ describe("NFT Series", function () {
       });
     }
 
-    const contractBalanceAfter = (await getAccountBalance(contractId))
-      .available;
-    console.log(
-      "\n\n\n Contract Balance Available",
-      formatNearAmount(
-        new BN(contractBalanceBefore)
-          .sub(new BN(contractBalanceAfter))
-          .toString(),
-        6
-      )
-    );
-
     const supply_for_type = await contractAccount.viewFunction(
       contractId,
       "nft_supply_for_type",
@@ -294,7 +618,6 @@ describe("NFT Series", function () {
     );
 
     assert.strictEqual(parseInt(supply_for_type, 10), COPIES_TO_MINT);
-    console.log("line 295!");
 
     const tokens = await contractAccount.viewFunction(
       contractId,
@@ -303,217 +626,198 @@ describe("NFT Series", function () {
         token_type_title: token_type_title_semi_gen,
       }
     );
-    console.log("semi-gen tokens: ", tokens);
-    const [TOKEN_DELIMETER, TITLE_DELIMETER, EDITION_DELIMETER] =
-      await contractAccount.viewFunction(contractId, "nft_get_type_format");
-    const {
-      token_id: _token_id,
-      owner_id,
-      metadata: { title, copies },
-    } = tokens[tokens.length - 1];
-    assert.strictEqual(owner_id, contractId);
-    token_id = _token_id;
-    const formattedTitle = `${token_type_title_semi_gen}${TITLE_DELIMETER}${
-      token_id.split(TOKEN_DELIMETER)[1]
-    }${EDITION_DELIMETER}${copies}`;
-    assert.strictEqual(title, formattedTitle);
+
+    // console.log("semi-gen tokens: ", tokens);
+
+    // check for expected quantity of each filetype
+    let distrCount1 = 0;
+    let distrCount2 = 0;
+    tokens.forEach((token) => {
+      if (
+        token.metadata.media.endsWith(
+          `${asset_distribution[0][0]}.${asset_filetypes[0]}`
+        )
+      )
+        distrCount1++;
+      else if (
+        token.metadata.media.endsWith(
+          `${asset_distribution[1][0]}.${asset_filetypes[1]}`
+        )
+      )
+        distrCount2++;
+    });
+    if (distrCount1 !== asset_distribution[0][1]) assert(false);
+    if (distrCount2 !== asset_distribution[1][1]) assert(false);
   });
 
-  // it("should allow someone to create a fully-generative type with multiple asset filetypes", async function () {
-  //   typeCopies = 20;
-  //   await contractAccount.functionCall({
-  //     contractId,
-  //     methodName: "nft_create_type",
-  //     args: {
-  //       metadata: {
-  //         title: token_type_title_fully_gen,
-  //         media: "bafkreibael4nenayqy45ijuvgcpkmyscbt3q35mtbzbeabopmugdwr5r64",
-  //         copies: typeCopies,
-  //       },
-  //       asset_count: typeCopies,
-  //       asset_filetypes: Array(typeCopies / 2)
-  //         .fill("jpg")
-  //         .concat(Array(typeCopies / 2).fill("png")),
-  //       royalty: {
-  //         [bobId]: BOB_ROYALTY,
-  //       },
-  //     },
-  //     gas,
-  //     attachedDeposit: parseNearAmount("0.1"),
-  //   });
+  it("should allow owner to create a fully-generative type with multiple asset filetypes", async function () {
+    typeCopies = 5;
+    // asset_filetypes = Array(typeCopies / 2).fill("jpg").concat(Array(typeCopies / 2).fill("png"));
+    asset_filetypes = ["png", "jpg", "mp4", "webm", "jpg"];
+    await contractAccount.functionCall({
+      contractId,
+      methodName: "nft_create_type",
+      args: {
+        metadata: {
+          title: token_type_title_fully_gen,
+          media: "bafkreibael4nenayqy45ijuvgcpkmyscbt3q35mtbzbeabopmugdwr5r64",
+          copies: typeCopies,
+        },
+        asset_count: typeCopies,
+        asset_filetypes,
+        royalty: {
+          [bobId]: BOB_ROYALTY,
+        },
+        json,
+      },
+      gas,
+      attachedDeposit: parseNearAmount("0.1"),
+    });
 
-  //   const token_type = await contractAccount.viewFunction(
-  //     contractId,
-  //     "nft_get_type",
-  //     {
-  //       token_type_title: token_type_title_fully_gen,
-  //     }
-  //   );
+    const token_type = await contractAccount.viewFunction(
+      contractId,
+      "nft_get_type",
+      {
+        token_type_title: token_type_title_fully_gen,
+      }
+    );
 
-  //   assert.strictEqual(token_type.owner_id, contractId);
-  //   assert.strictEqual(token_type.metadata.copies, typeCopies);
-  //   assert.strictEqual(token_type.royalty[bobId], 1000);
-  // });
+    assert.strictEqual(token_type.owner_id, contractId);
+    assert.strictEqual(token_type.metadata.copies, typeCopies);
+    assert.strictEqual(token_type.royalty[bobId], 1000);
+  });
 
-  // it("should allow the owner to mint tokens of a fully-generative type with multiple asset filetypes", async function () {
-  //   const contractBalanceBefore = (await getAccountBalance(contractId))
-  //     .available;
+  it("should allow the owner to mint correctly formatted tokens of a fully-generative type with multiple asset filetypes", async function () {
+    COPIES_TO_MINT = typeCopies;
+    for (let i = 0; i < COPIES_TO_MINT; i++) {
+      await contractAccount.functionCall({
+        contractId,
+        methodName: "nft_mint_type",
+        args: {
+          token_type_title: token_type_title_fully_gen,
+          receiver_id: contractId,
+        },
+        gas,
+        attachedDeposit: parseNearAmount("0.1"),
+      });
+    }
 
-  //   COPIES_TO_MINT = 5;
-  //   for (let i = 0; i < COPIES_TO_MINT; i++) {
-  //     await contractAccount.functionCall({
-  //       contractId,
-  //       methodName: "nft_mint_type",
-  //       args: {
-  //         token_type_title: token_type_title_fully_gen,
-  //         receiver_id: contractId,
-  //       },
-  //       gas,
-  //       attachedDeposit: parseNearAmount("0.1"),
-  //     });
-  //   }
+    const supply_for_type = await contractAccount.viewFunction(
+      contractId,
+      "nft_supply_for_type",
+      {
+        token_type_title: token_type_title_fully_gen,
+      }
+    );
 
-  //   const contractBalanceAfter = (await getAccountBalance(contractId))
-  //     .available;
-  //   console.log(
-  //     "\n\n\n Contract Balance Available",
-  //     formatNearAmount(
-  //       new BN(contractBalanceBefore)
-  //         .sub(new BN(contractBalanceAfter))
-  //         .toString(),
-  //       6
-  //     )
-  //   );
+    assert.strictEqual(parseInt(supply_for_type, 10), COPIES_TO_MINT);
 
-  //   const supply_for_type = await contractAccount.viewFunction(
-  //     contractId,
-  //     "nft_supply_for_type",
-  //     {
-  //       token_type_title: token_type_title_fully_gen,
-  //     }
-  //   );
+    const tokens = await contractAccount.viewFunction(
+      contractId,
+      "nft_tokens_by_type",
+      {
+        token_type_title: token_type_title_fully_gen,
+      }
+    );
 
-  //   assert.strictEqual(parseInt(supply_for_type, 10), COPIES_TO_MINT);
+    // console.log("fully-gen tokens multiple filetypes: ", tokens);
 
-  //   const tokens = await contractAccount.viewFunction(
-  //     contractId,
-  //     "nft_tokens_by_type",
-  //     {
-  //       token_type_title: token_type_title_fully_gen,
-  //     }
-  //   );
-  //   console.log("fully-gen tokens multiple filetypes: ", tokens);
-  //   const [TOKEN_DELIMETER, TITLE_DELIMETER, EDITION_DELIMETER] =
-  //     await contractAccount.viewFunction(contractId, "nft_get_type_format");
-  //   const {
-  //     token_id: _token_id,
-  //     owner_id,
-  //     metadata: { title, copies },
-  //   } = tokens[tokens.length - 1];
-  //   assert.strictEqual(owner_id, contractId);
-  //   token_id = _token_id;
-  //   const formattedTitle = `${token_type_title_fully_gen}${TITLE_DELIMETER}${
-  //     token_id.split(TOKEN_DELIMETER)[1]
-  //   }${EDITION_DELIMETER}${copies}`;
-  //   assert.strictEqual(title, formattedTitle);
-  // });
+    // check that each token has expected asset_id and filetype
+    for (let i = 0; i < tokens.length; i++) {
+      const token = tokens[i];
+      // check media
+      if (!token.metadata.media.endsWith(`${i + 1}.${asset_filetypes[i]}`))
+        assert(false);
+      // check extra
+      if (json) {
+        if (!token.metadata.extra.endsWith(`${i + 1}.json`)) assert(false);
+      }
+    }
+  });
 
-  // it("should allow someone to create a fully-generative type with a single asset filetypes", async function () {
-  //   typeCopies = 20;
-  //   await contractAccount.functionCall({
-  //     contractId,
-  //     methodName: "nft_create_type",
-  //     args: {
-  //       metadata: {
-  //         title: token_type_title_fully_gen_single_filetype,
-  //         media: "bafkreibael4nenayqy45ijuvgcpkmyscbt3q35mtbzbeabopmugdwr5r64",
-  //         copies: typeCopies,
-  //       },
-  //       asset_count: typeCopies,
-  //       asset_filetypes: ["jpg"],
-  //       royalty: {
-  //         [bobId]: BOB_ROYALTY,
-  //       },
-  //     },
-  //     gas,
-  //     attachedDeposit: parseNearAmount("0.1"),
-  //   });
+  it("should allow owner to create a fully-generative type with a single asset filetypes", async function () {
+    typeCopies = 5;
+    asset_filetypes = ["jpg"];
+    await contractAccount.functionCall({
+      contractId,
+      methodName: "nft_create_type",
+      args: {
+        metadata: {
+          title: token_type_title_fully_gen_single_filetype,
+          media: "bafkreibael4nenayqy45ijuvgcpkmyscbt3q35mtbzbeabopmugdwr5r64",
+          copies: typeCopies,
+        },
+        asset_count: typeCopies,
+        asset_filetypes,
+        royalty: {
+          [bobId]: BOB_ROYALTY,
+        },
+        json,
+      },
+      gas,
+      attachedDeposit: parseNearAmount("0.1"),
+    });
 
-  //   const token_type = await contractAccount.viewFunction(
-  //     contractId,
-  //     "nft_get_type",
-  //     {
-  //       token_type_title: token_type_title_fully_gen_single_filetype,
-  //     }
-  //   );
+    const token_type = await contractAccount.viewFunction(
+      contractId,
+      "nft_get_type",
+      {
+        token_type_title: token_type_title_fully_gen_single_filetype,
+      }
+    );
 
-  //   assert.strictEqual(token_type.owner_id, contractId);
-  //   assert.strictEqual(token_type.metadata.copies, typeCopies);
-  //   assert.strictEqual(token_type.royalty[bobId], 1000);
-  // });
+    assert.strictEqual(token_type.owner_id, contractId);
+    assert.strictEqual(token_type.metadata.copies, typeCopies);
+    assert.strictEqual(token_type.royalty[bobId], 1000);
+  });
 
-  // it("should allow the owner to mint tokens of a fully-generative type with a single asset filetype", async function () {
-  //   const contractBalanceBefore = (await getAccountBalance(contractId))
-  //     .available;
+  it("should allow the owner to mint correctly formatted tokens of a fully-generative type with a single asset filetype", async function () {
+    COPIES_TO_MINT = typeCopies;
+    for (let i = 0; i < COPIES_TO_MINT; i++) {
+      await contractAccount.functionCall({
+        contractId,
+        methodName: "nft_mint_type",
+        args: {
+          token_type_title: token_type_title_fully_gen_single_filetype,
+          receiver_id: contractId,
+        },
+        gas,
+        attachedDeposit: parseNearAmount("0.1"),
+      });
+    }
 
-  //   COPIES_TO_MINT = 5;
-  //   for (let i = 0; i < COPIES_TO_MINT; i++) {
-  //     await contractAccount.functionCall({
-  //       contractId,
-  //       methodName: "nft_mint_type",
-  //       args: {
-  //         token_type_title: token_type_title_fully_gen_single_filetype,
-  //         receiver_id: contractId,
-  //       },
-  //       gas,
-  //       attachedDeposit: parseNearAmount("0.1"),
-  //     });
-  //   }
+    const supply_for_type = await contractAccount.viewFunction(
+      contractId,
+      "nft_supply_for_type",
+      {
+        token_type_title: token_type_title_fully_gen_single_filetype,
+      }
+    );
 
-  //   const contractBalanceAfter = (await getAccountBalance(contractId))
-  //     .available;
-  //   console.log(
-  //     "\n\n\n Contract Balance Available",
-  //     formatNearAmount(
-  //       new BN(contractBalanceBefore)
-  //         .sub(new BN(contractBalanceAfter))
-  //         .toString(),
-  //       6
-  //     )
-  //   );
+    assert.strictEqual(parseInt(supply_for_type, 10), COPIES_TO_MINT);
 
-  //   const supply_for_type = await contractAccount.viewFunction(
-  //     contractId,
-  //     "nft_supply_for_type",
-  //     {
-  //       token_type_title: token_type_title_fully_gen_single_filetype,
-  //     }
-  //   );
+    const tokens = await contractAccount.viewFunction(
+      contractId,
+      "nft_tokens_by_type",
+      {
+        token_type_title: token_type_title_fully_gen_single_filetype,
+      }
+    );
 
-  //   assert.strictEqual(parseInt(supply_for_type, 10), COPIES_TO_MINT);
+    // console.log("fully-gen tokens single filetype: ", tokens);
 
-  //   const tokens = await contractAccount.viewFunction(
-  //     contractId,
-  //     "nft_tokens_by_type",
-  //     {
-  //       token_type_title: token_type_title_fully_gen_single_filetype,
-  //     }
-  //   );
-  //   console.log("fully-gen tokens single filetype: ", tokens);
-  //   const [TOKEN_DELIMETER, TITLE_DELIMETER, EDITION_DELIMETER] =
-  //     await contractAccount.viewFunction(contractId, "nft_get_type_format");
-  //   const {
-  //     token_id: _token_id,
-  //     owner_id,
-  //     metadata: { title, copies },
-  //   } = tokens[tokens.length - 1];
-  //   assert.strictEqual(owner_id, contractId);
-  //   token_id = _token_id;
-  //   const formattedTitle = `${token_type_title_fully_gen_single_filetype}${TITLE_DELIMETER}${
-  //     token_id.split(TOKEN_DELIMETER)[1]
-  //   }${EDITION_DELIMETER}${copies}`;
-  //   assert.strictEqual(title, formattedTitle);
-  // });
+    // check that each token has expected asset_id and filetype
+    for (let i = 0; i < tokens.length; i++) {
+      const token = tokens[i];
+      // check media
+      if (!token.metadata.media.endsWith(`${i + 1}.${asset_filetypes[0]}`))
+        assert(false);
+      // check extra
+      if (json) {
+        if (!token.metadata.extra.endsWith(`${i + 1}.json`)) assert(false);
+      }
+    }
+  });
 
   it("should allow the owner to update any type metadata fields EXCEPT for `copies`", async function () {
     const updatedTitle = token_type_title_semi_gen + " - updated";
@@ -555,16 +859,16 @@ describe("NFT Series", function () {
       }
     );
 
-    console.log("token_type_updated: ", token_type_updated);
-    console.log("typeCopies: ", typeCopies);
-
     assert.strictEqual(token_type_updated.metadata.title, updatedTitle);
     assert.strictEqual(
       token_type_updated.metadata.description,
       updatedDescription
     );
     assert.strictEqual(token_type_updated.metadata.media, updatedMedia);
-    assert.strictEqual(token_type_updated.metadata.copies, typeCopies);
+    assert.strictEqual(
+      token_type_updated.metadata.copies,
+      token_type_original.metadata.copies
+    );
 
     // revert to original values for future tests
     await contractAccount.functionCall({
@@ -703,10 +1007,7 @@ describe("NFT Series", function () {
       }
     );
 
-    console.log("supply: ", supply);
-    console.log("token_type line 705: ", token_type);
-
-    assert.strictEqual(token_type.metadata.copies, supply);
+    assert.strictEqual(token_type.metadata.copies, parseInt(supply, 10));
   });
 
   it("should NOT allow the owner to mint more than copies", async function () {

@@ -168,25 +168,19 @@ impl NonFungibleTokenEnumeration for Contract {
     from_index: Option<U128>,
     limit: Option<u64>
   ) -> Vec<Token> {
-    log!("in nft_tokens_by_type");
     let start_index: u128 = from_index.map(From::from).unwrap_or_default();
     let tokens = self.token_type_by_id.get(&self.token_type_by_title.get(&token_type_title).expect("no type")).expect("no type").tokens;
     assert!(
         (tokens.len() as u128) >= start_index,
         "Out of bounds, please use a smaller from_index."
     );
-    log!("line 178 in nft_tokens_by_type");
     let limit = limit.map(|v| v as usize).unwrap_or(usize::MAX);
     assert_ne!(limit, 0, "Cannot provide limit of 0.");
     
-    log!("line 182 in nft_tokens_by_type");
     tokens.iter()
       .skip(start_index as usize)
       .take(limit)
-      .map(|token_id| {
-        log!(format!("Token id in nft_tokens_by_type: {}", token_id));
-        self.nft_token(token_id).unwrap()
-      })
+      .map(|token_id| self.nft_token(token_id).unwrap())
       .collect()
   }
   

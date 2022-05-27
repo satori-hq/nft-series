@@ -58,3 +58,28 @@ pub(crate) fn assert_at_least_one_yocto() {
 pub(crate) fn royalty_to_payout(royalty_percentage: u32, amount_to_pay: Balance) -> U128 {
     U128(royalty_percentage as u128 * amount_to_pay / 10_000u128)
 }
+
+pub(crate) fn random_u128() -> u128 {
+    let random_seed = env::random_seed(); // len 32
+    // using first 16 bytes (doesn't affect randomness)
+    as_u128(random_seed.get(..16).unwrap())
+}
+
+fn as_u128(arr: &[u8]) -> u128 {
+    ((arr[0] as u128) << 0) +
+    ((arr[1] as u128) << 8) +
+    ((arr[2] as u128) << 16) +
+    ((arr[3] as u128) << 24)
+    // ((arr[4] as u128) << 32) +
+    // ((arr[5] as u128) << 40) +
+    // ((arr[6] as u128) << 48) +
+    // ((arr[7] as u128) << 56) +
+    // ((arr[8] as u128) << 64) +
+    // ((arr[9] as u128) << 72) +
+    // ((arr[10] as u128) << 80) +
+    // ((arr[11] as u128) << 88) +
+    // ((arr[12] as u128) << 96) +
+    // ((arr[13] as u128) << 104) +
+    // ((arr[14] as u128) << 112) +
+    // ((arr[15] as u128) << 120)
+}
