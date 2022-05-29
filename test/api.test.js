@@ -550,11 +550,11 @@ describe("NFT Series", function () {
   });
 
   it("should allow owner to create a semi-generative type", async function () {
-    // typeCopies = 10_000; // USE THIS TO TEST LARGE ARRAYS
+    // typeCopies = 500_000; // USE THIS TO TEST LARGE ARRAYS
     typeCopies = 6;
     // asset_filetypes = ["png"].concat(Array(typeCopies - 2).fill("jpg")); // USE THIS TO TEST LARGE ARRAYS
     asset_filetypes = ["png", "mp4"];
-    // asset_distribution = [[1, 2]].concat(Array(typeCopies - 2).fill([1, 1])) // USE THIS TO TEST LARGE ARRAYS
+    // asset_distribution = [[1, 2]].concat(Array(typeCopies - 2).fill([1, 1])); // USE THIS TO TEST LARGE ARRAYS
     asset_distribution = [
       [1, 4],
       [2, 2],
@@ -569,6 +569,7 @@ describe("NFT Series", function () {
           copies: typeCopies,
         },
         asset_count: 2,
+        // asset_count: typeCopies - 1, // USE THIS TO TEST LARGE ARRAYS
         asset_filetypes,
         asset_distribution,
         json,
@@ -595,7 +596,8 @@ describe("NFT Series", function () {
   });
 
   it("should allow the owner to mint correctly formatted tokens of a semi-generative type", async function () {
-    COPIES_TO_MINT = typeCopies;
+    // COPIES_TO_MINT = typeCopies;
+    COPIES_TO_MINT = 10;
     for (let i = 0; i < COPIES_TO_MINT; i++) {
       await contractAccount.functionCall({
         contractId,
