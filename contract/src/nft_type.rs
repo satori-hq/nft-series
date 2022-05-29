@@ -1,6 +1,6 @@
 use crate::*;
 
-use near_sdk::{ log };
+// use near_sdk::{ log };
 
 pub type AssetDetail = Vec<u64>; // E.g. [1, 10] where 1 is asset_id and 10 is supply_remaining
 pub type TokenTypeId = u64;
@@ -55,7 +55,10 @@ impl NonFungibleTokenType for Contract {
 				asset_distribution: Option<Vec<AssetDetail>>, // may alternatively be able to use near_sdk_collections TreeMap for optimized storage
 				json: bool,
     ) {
+
 		let initial_storage_usage = env::storage_usage();
+
+		// VALIDATION
     let owner_id = env::predecessor_account_id();
 		assert_eq!(owner_id.clone(), self.tokens.owner_id, "Unauthorized");
 		// `title` required
@@ -68,38 +71,33 @@ impl NonFungibleTokenType for Contract {
 		let media = metadata.media.clone();
 		assert!(media.is_some(), "token_metadata.media is required");
 
-		let is_non_generative = asset_count == 1 && metadata.copies.unwrap() > 1; // numbered editions of single media asset
-		let is_fully_generative = asset_count == metadata.copies.unwrap(); // unique asset for each NFT
-		let is_semi_generative = !is_non_generative && !is_fully_generative; // multi-edition (multiple assets)
+		// MORE VALIDATION
+		// "non-generative" = numbered editions of single media asset (e.g. 1 asset for 100 copies)
+		// "fully-generative" = unique asset for each NFT (e.g. 100 assets for 100 copies)
+		// "semi-generative" = multi-edition (multiple assets but not 1:1 e.g. 5 assets distributed among 100 copies)
+		
+		let is_non_generative = asset_count == 1 && metadata.copies.unwrap() > 1; 
+		let is_fully_generative = asset_count == metadata.copies.unwrap();
+		let is_semi_generative = !is_non_generative && !is_fully_generative;
 
 		let asset_filetypes_len = asset_filetypes.len();
-
-		// if is_fully_generative {
-		// 	// this is a fully-generative type/series (each NFT references a unique media asset). As such: 
-		// 	// 1. asset_filetypes should be a vector with a length of 1 OR asset_count
-		// 	// 2. asset_distribution should not be provided (by definition, each NFT in a fully-generative type/series has unique media)
-		// 	// assert!(asset_filetypes_len == 1 || asset_filetypes_len == asset_count as usize, "For fully-generative type/series, asset_filetypes should be a vector with a length of 1 OR asset_count.");
-		// 	// assert!(asset_distribution.is_none(), "asset_distribution should not be provided for fully-generative type/series");
-		// } else if is_non_generative {
-		// 	// this is a non-generative type/series (numbered editions of a single media asset). As such:
-		// 	// 1. asset_distribution should not be provided (there is only one asset to be used across all NFTs, therefore there is no concept of distribution)
-		// 	// assert!(asset_distribution.is_none(), "asset_distribution should not be provided for non-generative type/series");
-		// }
 
 		// For all series types (non-, semi- and fully-generative), asset_filetypes should be a vector with a length of 1 OR asset_distribution (otherwise, we will not know which filetype to associate with NFT media at time of mint)
 		assert!(asset_filetypes_len == 1 || asset_filetypes_len == asset_count as usize, "asset_filetypes should be a vector with a length of 1 OR asset_count.");
 
 		if is_semi_generative {
-			// this is a semi-generative series (multi-edition/multiple media assets). As such:
-			// 1. asset_distribution must be present and cannot be empty
+			// this is a semi-generative series (multi-edition)
+			// As such:
+			// 1. asset_distribution vector must be present and cannot be empty
 			assert!(asset_distribution.is_some(), "asset_distribution must be provided for semi-generative series");
 			let asset_distribution = asset_distribution.clone().unwrap();
 			assert!(!asset_distribution.is_empty(), "asset_distribution must not be empty");
 
-			// 2. asset_distribution vector must be of length asset_count
+			// 2. length of asset_distribution vector must equal asset_count
 			assert!(asset_distribution.len() == asset_count as usize, "for semi-generative series, length of asset_distribution vector must equal asset_count");
 
-			// 3. each asset_distribution element must contain two integers: asset_id and total_supply; sum of total_supply must be equal to `metadata.copies`
+			// 3. each asset_distribution element must contain two integers: asset_id and total_supply
+			// sum of total_supply must be equal to `metadata.copies`
 			let mut total_supply = 0 as u64;
 			for distr_detail in asset_distribution {
 				let asset_id = distr_detail.get(0);
@@ -150,6 +148,7 @@ impl NonFungibleTokenType for Contract {
 		let mut token_type = self.token_type_by_id.get(&token_type_id).expect("no token");
 		token_type.metadata.copies = Some(token_type.tokens.len());
 		self.token_type_by_id.insert(&token_type_id, &token_type);
+		// TODO: remove asset_distribution & asset_filetypes vectors?
 	}
 
 	#[payable]
@@ -198,6 +197,7 @@ impl NonFungibleTokenType for Contract {
 
 		let initial_storage_usage = env::storage_usage();
 
+		// get token type & mint args
 		let token_type_id = self.token_type_by_title.get(&token_type_title).expect("no type");
 		let mut token_type = self.token_type_by_id.get(&token_type_id).expect("no token");
 		let mut token_type_mint_args = self.token_type_mint_args_by_id.get(&token_type_id).expect("no mint args");
@@ -212,6 +212,10 @@ impl NonFungibleTokenType for Contract {
 		let mut asset_id = 1;
 		let num_filetypes = token_type_mint_args.asset_filetypes.len();
 		let mut file_type = token_type_mint_args.asset_filetypes.get(0).unwrap().clone();
+
+		// "non-generative" = numbered editions of single media asset (e.g. 1 asset for 100 copies)
+		// "fully-generative" = unique asset for each NFT (e.g. 100 assets for 100 copies)
+		// "semi-generative" = multi-edition (multiple assets but not 1:1 e.g. 5 assets distributed among 100 copies)
 
 		if asset_count == copies {
 			// fully-generative case (unique media per NFT; could be 1/1 or 1/10,000)
@@ -229,17 +233,14 @@ impl NonFungibleTokenType for Contract {
 				// semi-generative case
 				// use asset_distribution vector to determine asset to associate with this NFT
 				let random_num = random_u128();
-				// log!(format!("asset distribution line 199: {:#?}", token_type_mint_args.asset_distribution));
 				let idx = random_num % token_type_mint_args.asset_distribution.len() as u128;
 				let mut asset = token_type_mint_args.asset_distribution.get(idx as usize).unwrap().clone();
-				// log!(format!("asset line 201: {:#?}", asset));
 				asset_id = asset.get(0).unwrap().clone();
 				let mut supply_remaining = asset.get(1).unwrap().clone();
 
 				if token_type_mint_args.asset_filetypes.len() > 1 {
 					file_type = token_type_mint_args.asset_filetypes.get(idx as usize).unwrap().to_string();
 				}
-				// log!(format!("asset id line 207: {}", asset_id));
 
 				// cleanup
 				if supply_remaining > 1 {
@@ -247,22 +248,15 @@ impl NonFungibleTokenType for Contract {
 					supply_remaining = supply_remaining - 1;
 					asset.remove(1);
 					asset.insert(1, supply_remaining);
-					// log!(format!("asset: {:#?}", asset));
 					token_type_mint_args.asset_distribution.remove(idx as usize);
 					token_type_mint_args.asset_distribution.insert(idx as usize, asset);
-					// token_type_mint_args.asset_distribution.insert(index: usize, element: T)
 				} else {
 					// no supply left; remove asset from asset distribution list and remove filetype from asset filetypes list (these need to remain NSYNC)
-					// TODO: is there a chance, e.g. in O(n) worst case, that this could run out of gas and never be removed?
-					// log!(format!("asset distribution line 216: {:#?}", token_type_mint_args.asset_distribution));
 					token_type_mint_args.asset_distribution.remove(idx as usize);
 					token_type_mint_args.asset_filetypes.remove(idx as usize);
-					// log!(format!("asset distribution line 218: {:#?}", token_type.asset_distribution));
 				}
 			}
 		}
-
-		// log!(format!("asset id line 229: {}", asset_id));
 
 		let token_id = format!("{}{}{}", &token_type_id, TOKEN_DELIMETER, num_tokens + 1);
 		token_type.tokens.insert(&token_id);
@@ -283,7 +277,6 @@ impl NonFungibleTokenType for Contract {
 			file_type: Some(file_type),
 			extra,
 		});
-		// log!(format!("final_metadata: {:#?}", final_metadata));
 
 		let token = self.tokens.internal_mint(token_id.clone(), receiver_id.clone(), final_metadata);
 
@@ -300,8 +293,6 @@ impl NonFungibleTokenType for Contract {
 				}
 			]
 		})).as_ref());
-
-		// log!(format!("token line 263: {:#?}", token));
 			
 		token
 	}

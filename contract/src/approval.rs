@@ -175,8 +175,6 @@ impl NonFungibleTokenApproval for Contract {
             if old_approval_id.is_none() { bytes_for_approved_account_id(&account_id) } else { 0 };
         refund_deposit(storage_used);
 
-        log!("msg in nft_approve: {:#?}", msg);
-
         // if given `msg`, schedule call to `nft_on_approve` and return it. Else, return None.
         msg.map(|msg| {
             ext_approval_receiver::nft_on_approve(
