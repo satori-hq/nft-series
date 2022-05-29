@@ -481,14 +481,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "near-contract-standards"
-version = "4.0.0-pre.4"
-source = "git+https://github.com/mattlockyer/near-sdk-rs?rev=70ded5b#70ded5b83b5a0bbd2f7b69bd1b7bc76d2ccaa315"
-dependencies = [
- "near-sdk",
-]
-
-[[package]]
 name = "near-crypto"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -662,7 +654,6 @@ dependencies = [
 name = "nft-series"
 version = "0.1.0"
 dependencies = [
- "near-contract-standards",
  "near-sdk",
 ]
 

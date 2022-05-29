@@ -9,7 +9,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 near-sdk = { git = "https://github.com/mattlockyer/near-sdk-rs", rev = "70ded5b" }
-near-contract-standards = { git = "https://github.com/mattlockyer/near-sdk-rs", rev = "70ded5b" }
+# near-contract-standards = { git = "https://github.com/mattlockyer/near-sdk-rs", rev = "70ded5b" }
 
 [profile.release]
 codegen-units = 1

@@ -1,5 +1,7 @@
 use crate::*;
 
+use near_sdk::log;
+
 /// approval callbacks from NFT Contracts
 
 #[derive(Serialize, Deserialize)]
@@ -46,9 +48,11 @@ impl NonFungibleTokenApprovalsReceiver for Contract {
             }
         }
 
-        // log!("add_sale for owner: {}", &owner_id);
+        log!("add_sale for owner: {}", &owner_id);
 
         let contract_and_token_id = format!("{}{}{}", nft_contract_id, DELIMETER, token_id);
+        log!("contract and token id: {}", &contract_and_token_id);
+
         self.sales.insert(
             &contract_and_token_id,
             &Sale {
