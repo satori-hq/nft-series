@@ -117,6 +117,71 @@ describe("NFT Series", function () {
     assert.strictEqual(metadata_updated.base_uri, updatedBaseUri);
   });
 
+  it("should allow the owner to update all fields of a contract's source_metadata", async function () {
+    const updatedVersion = Date.now().toString();
+    const updatedHash = "1".repeat(63);
+    const updatedLink = "updatedLink";
+
+    await contractAccount.functionCall({
+      contractId,
+      methodName: "patch_contract_source_metadata",
+      args: {
+        new_source_metadata: {
+          version: updatedVersion,
+          commit_hash: updatedHash,
+          link: updatedLink,
+        },
+      },
+      gas,
+      attachedDeposit: parseNearAmount("0.1"),
+    });
+
+    const source_metadata_updated = await contractAccount.viewFunction(
+      contractId,
+      "contract_source_metadata"
+    );
+
+    assert.strictEqual(source_metadata_updated.version, updatedVersion);
+    assert.strictEqual(source_metadata_updated.commit_hash, updatedHash);
+    assert.strictEqual(source_metadata_updated.link, updatedLink);
+  });
+
+  it("should allow the owner to update a single field of a contract's source_metadata", async function () {
+    const source_metadata_original = await contractAccount.viewFunction(
+      contractId,
+      "contract_source_metadata"
+    );
+
+    const updatedVersion = Date.now().toString();
+
+    await contractAccount.functionCall({
+      contractId,
+      methodName: "patch_contract_source_metadata",
+      args: {
+        new_source_metadata: {
+          version: updatedVersion,
+        },
+      },
+      gas,
+      attachedDeposit: parseNearAmount("0.1"),
+    });
+
+    const source_metadata_updated = await contractAccount.viewFunction(
+      contractId,
+      "contract_source_metadata"
+    );
+
+    assert.strictEqual(source_metadata_updated.version, updatedVersion);
+    assert.strictEqual(
+      source_metadata_updated.commit_hash,
+      source_metadata_original.commit_hash
+    );
+    assert.strictEqual(
+      source_metadata_updated.link,
+      source_metadata_original.link
+    );
+  });
+
   it("should error if owner attempts to create a type with invalid arguments", async function () {
     typeCopies = 10;
 

@@ -14,6 +14,7 @@ pub use crate::approval::*;
 pub use crate::royalty::*;
 pub use crate::enumeration::*;
 pub use crate::nft_type::*;
+pub use crate::contract_source::*;
 
 mod metadata;
 mod nft_core;
@@ -22,6 +23,7 @@ mod approval;
 mod royalty;
 mod enumeration;
 mod nft_type;
+mod contract_source;
 
 /// CUSTOM TYPES
 
@@ -82,8 +84,10 @@ pub struct TokenTypeMintArgs {
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
 pub struct Contract {
-    tokens: NonFungibleToken,
-    metadata: LazyOption<NFTContractMetadata>,
+	tokens: NonFungibleToken,
+	metadata: LazyOption<NFTContractMetadata>,
+	// CONTRACT SOURCE METADATA: https://github.com/near/NEPs/blob/master/neps/nep-0330.md
+	contract_metadata: LazyOption<ContractSourceMetadata>,
 	// CUSTOM
 	token_type_by_title: LookupMap<TokenTypeTitle, TokenTypeId>,
 	token_type_by_id: UnorderedMap<TokenTypeId, TokenType>,
@@ -96,6 +100,7 @@ pub enum StorageKey {
 	// STANDARD
     NonFungibleToken,
     Metadata,
+		SourceMetadata,
     TokenMetadata,
     Enumeration,
     Approval,
@@ -123,11 +128,16 @@ impl Contract {
                 reference: None,
                 reference_hash: None,
             },
+						ContractSourceMetadata {
+							version: Some("1.0.0".to_string()),
+							commit_hash: Some("b245d8f7fbe72c250cbabbd16544477f9958be2e".to_string()),
+							link: Some("https://github.com/satori-hq/nft-series".to_string()),
+						}
         )
     }
 
     #[init]
-    pub fn new(owner_id: AccountId, metadata: NFTContractMetadata) -> Self {
+    pub fn new(owner_id: AccountId, metadata: NFTContractMetadata, source_metadata: ContractSourceMetadata) -> Self {
         assert!(!env::state_exists(), "Already initialized");
         metadata.assert_valid();
         Self {
@@ -142,6 +152,7 @@ impl Contract {
 						token_type_by_title: LookupMap::new(StorageKey::TokenTypeByTitle),
 						token_type_mint_args_by_id: LookupMap::new(StorageKey::TokenTypeMintArgsById),
             metadata: LazyOption::new(StorageKey::Metadata, Some(&metadata)),
+						contract_metadata: LazyOption::new(StorageKey::SourceMetadata, Some(&source_metadata)),
         }
     }
 
