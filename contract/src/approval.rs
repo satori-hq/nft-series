@@ -1,7 +1,7 @@
 use crate::*;
 
 // use crate::non_fungible_token::token::TokenId;
-use near_sdk::{assert_one_yocto, env, log, ext_contract, require, AccountId, Balance, Gas, Promise};
+use near_sdk::{assert_one_yocto, env, ext_contract, require, AccountId, Balance, Gas, Promise};
 
 
 /// Trait used when it's desired to have a non-fungible token that has a

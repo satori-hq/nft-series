@@ -1,7 +1,6 @@
 use crate::*;
 
 use near_sdk::json_types::{U128};
-use near_sdk::{ log };
 
 /// "getter" methods for Contract
 trait NonFungibleTokenEnumeration {
