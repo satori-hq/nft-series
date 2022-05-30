@@ -4,23 +4,26 @@ use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::{PanicOnDefault};
 
 /// Contract source metadata structure
+/// As per NEP 0330 (https://github.com/near/NEPs/blob/master/neps/nep-0330.md)
 #[derive(Serialize, Deserialize, BorshDeserialize, BorshSerialize, PanicOnDefault)]
 #[serde(crate = "near_sdk::serde")]
 pub struct ContractSourceMetadata {
+  /// e.g. "1.0.0" (for internal use)
 	pub version: Option<String>,
+  /// Git commit hash of currently deployed contract code
   pub commit_hash: Option<String>,
+  /// GitHub repo url for currently deployed contract code
 	pub link: Option<String>,
 }
 
 /// Contract source metadata trait
 pub trait ContractSourceMetadataTrait {
-  // view method
+  /// PUBLIC - View contract source metadata (Git references)
 	fn contract_source_metadata(&self) -> ContractSourceMetadata;
-  // patch/update method
+  /// OWNER-ONLY - Patch/update contract source metadata
   fn patch_contract_source_metadata(&mut self, new_source_metadata: ContractSourceMetadata);
 }
 
-/// Implementation of the view function
 #[near_bindgen]
 impl ContractSourceMetadataTrait for Contract {
     fn contract_source_metadata(&self) -> ContractSourceMetadata {
