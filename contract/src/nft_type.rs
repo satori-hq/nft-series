@@ -41,6 +41,12 @@ pub trait NonFungibleTokenType {
 		receiver_id: AccountId,
     _metadata: Option<TokenMetadata>,
 	) -> Token;
+
+	/// Delete an NFT type/series that is empty (no NFTs minted yet)
+	fn nft_delete_type(
+		&mut self,
+		token_type_title: TokenTypeTitle,
+	);
 }
 
 #[near_bindgen]
@@ -191,7 +197,7 @@ impl NonFungibleTokenType for Contract {
 		token_type_title: TokenTypeTitle,
 		receiver_id: AccountId,
     _metadata: Option<TokenMetadata>,
-	) -> Token {
+		) -> Token {
 
 		assert_eq!(env::predecessor_account_id(), self.tokens.owner_id, "Unauthorized");
 
@@ -295,5 +301,32 @@ impl NonFungibleTokenType for Contract {
 		})).as_ref());
 			
 		token
+	}
+
+	#[payable]
+	fn nft_delete_type(
+		&mut self,
+		token_type_title: TokenTypeTitle,
+	) {
+		let initial_storage_usage = env::storage_usage();
+    let owner_id = env::predecessor_account_id();
+		assert_eq!(owner_id.clone(), self.tokens.owner_id, "Unauthorized");
+
+		let token_type_id = self.token_type_by_title.get(&token_type_title).expect("no type");
+		let token_type = self.token_type_by_id.get(&token_type_id).expect("no token");
+		// let mut token_type_mint_args = self.token_type_mint_args_by_id.get(&token_type_id).expect("no mint args");
+		// check if there are any tokens (can't delete if there are minted NFTs)
+		let num_tokens = token_type.tokens.len();
+		assert!(num_tokens < 1, "Cannot delete a type that contains tokens (found {} tokens)", num_tokens);
+
+		// remove from token_type_by_id
+		self.token_type_by_id.remove(&token_type_id);
+		// remove from token_type_by_title
+		self.token_type_by_title.remove(&token_type_title);
+		// remove from token_type_mint_args_by_id
+		self.token_type_mint_args_by_id.remove(&token_type_id);
+
+		let amt_to_refund = if env::storage_usage() > initial_storage_usage { env::storage_usage() - initial_storage_usage } else { initial_storage_usage - env::storage_usage() };
+    refund_deposit(amt_to_refund);
 	}
 }
