@@ -4,7 +4,7 @@ use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::{PanicOnDefault};
 
 /// Contract source metadata structure
-/// As per NEP 0330 (https://github.com/near/NEPs/blob/master/neps/nep-0330.md)
+/// As per NEP 0330 (https://github.com/near/NEPs/blob/master/neps/nep-0330.md), with addition of `commit_hash`
 #[derive(Serialize, Deserialize, BorshDeserialize, BorshSerialize, PanicOnDefault)]
 #[serde(crate = "near_sdk::serde")]
 pub struct ContractSourceMetadata {
