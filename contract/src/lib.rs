@@ -44,16 +44,49 @@ pub const TITLE_DELIMETER: &str = " — ";
 /// e.g. "Title — 2/10" where 10 is max copies
 pub const EDITION_DELIMETER: &str = "/";
 
+// #[derive(BorshDeserialize, BorshSerialize)]
+// pub struct TokenTypeV1 { // OLD TOKEN TYPE
+// 	metadata: TokenMetadata,
+// 	owner_id: AccountId,
+// 	royalty: HashMap<AccountId, u32>,
+// 	tokens: UnorderedSet<TokenId>,
+// 	approved_market_id: Option<AccountId>,
+// }
+
 #[derive(BorshDeserialize, BorshSerialize)]
-pub struct TokenType {
+pub struct TokenType { // CURRENT TOKEN TYPE
 	metadata: TokenMetadata,
-	asset_count: u64, 
-	json: bool, // is there a corresponding json file available on IPFS for each asset ID? (this will be added to extra on enumeration)
 	owner_id: AccountId,
 	royalty: HashMap<AccountId, u32>,
 	tokens: UnorderedSet<TokenId>,
 	approved_market_id: Option<AccountId>,
+	// NEW FIELDS
+	// asset_count: Option<u64>, 
+	// json: Option<bool>, // is there a corresponding json file available on IPFS for each asset ID? (this will be added to extra on enumeration)
 }
+
+// #[derive(BorshSerialize, BorshDeserialize)]
+// pub enum UpgradableTokenType {
+//     V1(TokenTypeV1),
+//     V2(TokenType),
+// }
+
+// impl From<UpgradableTokenType> for TokenType {
+// 	fn from(token_type: UpgradableTokenType) -> Self {
+// 			match token_type {
+// 					UpgradableTokenType::V2(token_type) => token_type,
+// 					UpgradableTokenType::V1(v1) => TokenType {
+// 							metadata: v1.metadata,
+// 							owner_id: v1.owner_id,
+// 							royalty: v1.royalty,
+// 							tokens: v1.tokens,
+// 							approved_market_id: v1.approved_market_id,
+// 							asset_count: None,
+// 							json: None,
+// 					}
+// 			}
+// 	}
+// }
 
 #[derive(Serialize, Deserialize)]
 #[serde(crate = "near_sdk::serde")]
@@ -72,12 +105,15 @@ pub struct TypeMintArgs {
 
 /// Contains potentially large vectors which are used when minting NFTs for a type.
 /// Stored in separate struct rather than on `TokenType` to avoid using gas on loading these vectors into memory on enumeration methods, e.g. `nft_token`
+#[derive(Debug)]
 #[derive(BorshDeserialize, BorshSerialize)]
 #[derive(Serialize, Deserialize)]
 #[serde(crate = "near_sdk::serde")]
 pub struct TokenTypeMintArgs {
 	asset_filetypes: Vec<String>, // e.g. jpg, png, mp4
 	asset_distribution: Vec<AssetDetail>,
+	asset_count: Option<u64>, 
+	has_json: Option<bool>, // indicates whether there is a corresponding json file available on IPFS for each asset ID (this will be added to extra on enumeration)
 }
 
 /// STANDARD

@@ -125,7 +125,6 @@ impl NonFungibleTokenType for Contract {
 			metadata,
 			owner_id,
 			royalty,
-			asset_count,
 			tokens: UnorderedSet::new(
 				StorageKey::TokensByTypeInner {
 					token_type_id
@@ -134,13 +133,16 @@ impl NonFungibleTokenType for Contract {
 				.unwrap(),
 			),
 			approved_market_id: None,
-			json,
 		});
 
-		self.token_type_mint_args_by_id.insert(&token_type_id, &TokenTypeMintArgs{
+		let mint_args = TokenTypeMintArgs{
 			asset_filetypes,
 			asset_distribution: asset_distribution.unwrap_or(Vec::new()),
-		});
+			asset_count: Some(asset_count),
+			has_json: Some(json),
+		};
+
+		self.token_type_mint_args_by_id.insert(&token_type_id, &mint_args);
 
     refund_deposit(env::storage_usage() - initial_storage_usage);
   }
@@ -206,85 +208,94 @@ impl NonFungibleTokenType for Contract {
 		// get token type & mint args
 		let token_type_id = self.token_type_by_title.get(&token_type_title).expect("no type");
 		let mut token_type = self.token_type_by_id.get(&token_type_id).expect("no token");
-		let mut token_type_mint_args = self.token_type_mint_args_by_id.get(&token_type_id).expect("no mint args");
 		assert_eq!(&env::predecessor_account_id(), &token_type.owner_id, "not type owner");
 
 		let num_tokens = token_type.tokens.len();
 		let max_copies = token_type.metadata.copies.unwrap_or(u64::MAX);
-		let asset_count = token_type.asset_count;
-		let copies = token_type.metadata.copies.unwrap();
 		assert_ne!(num_tokens, max_copies, "type supply maxed");
 
-		let mut asset_id = 1;
-		let num_filetypes = token_type_mint_args.asset_filetypes.len();
-		let mut file_type = token_type_mint_args.asset_filetypes.get(0).unwrap().clone();
+		let copies = token_type.metadata.copies.unwrap();
+		
+		// TODO finish adding custom metadata (if provided) to final_metadata
+		// you can add custom metadata to each token here
+		// make sure you update self.nft_token to "patch" over the type metadata
+		let mut final_metadata = TokenMetadata {
+			title: None, // ex. "Arch Nemesis: Mail Carrier" or "Parcel #5055"
+			description: None, // free-form description
+			media: None, // URL to associated media, preferably to decentralized, content-addressed storage
+			copies: None, // number of copies of this set of metadata in existence when token was minted.
+			asset_id: None,
+			filetype: None,
+			extra: None,
+		};
 
-		// "non-generative" = numbered editions of single media asset (e.g. 1 asset for 100 copies)
-		// "fully-generative" = unique asset for each NFT (e.g. 100 assets for 100 copies)
-		// "semi-generative" = multi-edition (multiple assets but not 1:1 e.g. 5 assets distributed among 100 copies)
+		// let mut token_type_mint_args = self.token_type_mint_args_by_id.get(&token_type_id).expect("no mint args");
+		let token_type_mint_args = self.token_type_mint_args_by_id.get(&token_type_id);
+		if let Some(mut token_type_mint_args) = token_type_mint_args {
 
-		if asset_count == copies {
-			// fully-generative case (unique media per NFT; could be 1/1 or 1/10,000)
-			asset_id = num_tokens + 1;
-			if num_filetypes > 1 {
-				// fully-generative case with specified filetype for each asset
-				// get filetype at index of this asset
-				file_type = token_type_mint_args.asset_filetypes.get((asset_id - 1) as usize).unwrap().clone();
-			}
-		} else {
-			if asset_count == 1 {
-				// non-generative case
-				// nothing to do; asset_id stays as 1, and file_type is first element in filetypes vector. Move on!
+			let mut asset_id = 1;
+			let num_filetypes = token_type_mint_args.asset_filetypes.len();
+			let mut file_type = token_type_mint_args.asset_filetypes.get(0).unwrap().clone();
+
+			// "non-generative" = numbered editions of single media asset (e.g. 1 asset for 100 copies)
+			// "fully-generative" = unique asset for each NFT (e.g. 100 assets for 100 copies)
+			// "semi-generative" = multi-edition (multiple assets but not 1:1 e.g. 5 assets distributed among 100 copies)
+
+			if token_type_mint_args.asset_count == Some(copies) {
+				// fully-generative case (unique media per NFT; could be 1/1 or 1/10,000)
+				asset_id = num_tokens + 1;
+				if num_filetypes > 1 {
+					// fully-generative case with specified filetype for each asset
+					// get filetype at index of this asset
+					file_type = token_type_mint_args.asset_filetypes.get((asset_id - 1) as usize).unwrap().clone();
+				}
 			} else {
-				// semi-generative case
-				// use asset_distribution vector to determine asset to associate with this NFT
-				let random_num = random_u128();
-				let idx = random_num % token_type_mint_args.asset_distribution.len() as u128;
-				let mut asset = token_type_mint_args.asset_distribution.get(idx as usize).unwrap().clone();
-				asset_id = asset.get(0).unwrap().clone();
-				let mut supply_remaining = asset.get(1).unwrap().clone();
-
-				if token_type_mint_args.asset_filetypes.len() > 1 {
-					file_type = token_type_mint_args.asset_filetypes.get(idx as usize).unwrap().to_string();
-				}
-
-				// cleanup
-				if supply_remaining > 1 {
-					// decrement supply
-					supply_remaining = supply_remaining - 1;
-					asset.remove(1);
-					asset.insert(1, supply_remaining);
-					token_type_mint_args.asset_distribution.remove(idx as usize);
-					token_type_mint_args.asset_distribution.insert(idx as usize, asset);
+				if token_type_mint_args.asset_count == Some(1) {
+					// non-generative case
+					// nothing to do; asset_id stays as 1, and file_type is first element in filetypes vector. Move on!
 				} else {
-					// no supply left; remove asset from asset distribution list and remove filetype from asset filetypes list (these need to remain NSYNC)
-					token_type_mint_args.asset_distribution.remove(idx as usize);
-					token_type_mint_args.asset_filetypes.remove(idx as usize);
+					// semi-generative case
+					// use asset_distribution vector to determine asset to associate with this NFT
+					let random_num = random_u128();
+					let idx = random_num % token_type_mint_args.asset_distribution.len() as u128;
+					let mut asset = token_type_mint_args.asset_distribution.get(idx as usize).unwrap().clone();
+					asset_id = asset.get(0).unwrap().clone();
+					let mut supply_remaining = asset.get(1).unwrap().clone();
+
+					if token_type_mint_args.asset_filetypes.len() > 1 {
+						file_type = token_type_mint_args.asset_filetypes.get(idx as usize).unwrap().to_string();
+					}
+
+					// cleanup
+					if supply_remaining > 1 {
+						// decrement supply
+						supply_remaining = supply_remaining - 1;
+						asset.remove(1);
+						asset.insert(1, supply_remaining);
+						token_type_mint_args.asset_distribution.remove(idx as usize);
+						token_type_mint_args.asset_distribution.insert(idx as usize, asset);
+					} else {
+						// no supply left; remove asset from asset distribution list and remove filetype from asset filetypes list (these need to remain NSYNC)
+						token_type_mint_args.asset_distribution.remove(idx as usize);
+						token_type_mint_args.asset_filetypes.remove(idx as usize);
+					}
 				}
 			}
+			self.token_type_mint_args_by_id.insert(&token_type_id, &token_type_mint_args);
+
+			if token_type_mint_args.has_json == Some(true) {
+				final_metadata.extra = Some(format!("{}.json", asset_id.to_string()))
+			};
+
+			final_metadata.asset_id = Some(asset_id.to_string());
+			final_metadata.filetype = Some(file_type);
 		}
 
 		let token_id = format!("{}{}{}", &token_type_id, TOKEN_DELIMETER, num_tokens + 1);
 		token_type.tokens.insert(&token_id);
 		self.token_type_by_id.insert(&token_type_id, &token_type);
-		self.token_type_mint_args_by_id.insert(&token_type_id, &token_type_mint_args);
 
-		let extra = if token_type.json { Some(format!("{}.json", asset_id.to_string())) } else { None };
-
-		// TODO finish adding custom metadata (if provided) to final_metadata
-		// you can add custom metadata to each token here
-		// make sure you update self.nft_token to "patch" over the type metadata
-		let final_metadata = Some(TokenMetadata {
-			title: None, // ex. "Arch Nemesis: Mail Carrier" or "Parcel #5055"
-			description: None, // free-form description
-			media: None, // URL to associated media, preferably to decentralized, content-addressed storage
-			copies: None, // number of copies of this set of metadata in existence when token was minted.
-			asset_id: Some(asset_id.to_string()),
-			file_type: Some(file_type),
-			extra,
-		});
-
-		let token = self.tokens.internal_mint(token_id.clone(), receiver_id.clone(), final_metadata);
+		let token = self.tokens.internal_mint(token_id.clone(), receiver_id.clone(), Some(final_metadata));
 
     refund_deposit(env::storage_usage() - initial_storage_usage);
 
@@ -324,7 +335,7 @@ impl NonFungibleTokenType for Contract {
 		// remove from token_type_by_title
 		self.token_type_by_title.remove(&token_type_title);
 		// remove from token_type_mint_args_by_id
-		self.token_type_mint_args_by_id.remove(&token_type_id);
+		self.token_type_mint_args_by_id.remove(&token_type_id); // TODO: will this error on contracts where self.token_type_mint_args_by_id is not present?
 
 		let amt_to_refund = if env::storage_usage() > initial_storage_usage { env::storage_usage() - initial_storage_usage } else { initial_storage_usage - env::storage_usage() };
     refund_deposit(amt_to_refund);

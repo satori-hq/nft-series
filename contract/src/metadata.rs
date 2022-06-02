@@ -35,17 +35,51 @@ pub struct NFTContractMetadata {
     pub reference_hash: Option<Base64VecU8>, // Base64-encoded sha256 hash of JSON from reference field. Required if `reference` is included.
 }
 
-/// NEW Metadata on the individual token level.
+/// Metadata on the individual token level.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, BorshDeserialize, BorshSerialize)]
 #[serde(crate = "near_sdk::serde")]
-pub struct TokenMetadata {
+pub struct TokenMetadataV1 { // OLD TOKEN METADATA
     pub title: Option<String>, // ex. "Arch Nemesis: Mail Carrier" or "Parcel #5055"
     pub description: Option<String>, // free-form description
     pub media: Option<String>, // URL to associated media, preferably to decentralized, content-addressed storage
     pub copies: Option<u64>, // number of copies of this set of metadata in existence when token was minted.
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, BorshDeserialize, BorshSerialize)]
+#[serde(crate = "near_sdk::serde")]
+pub struct TokenMetadata { // CURRENT TOKEN METADATA
+    pub title: Option<String>, // ex. "Arch Nemesis: Mail Carrier" or "Parcel #5055"
+    pub description: Option<String>, // free-form description
+    pub media: Option<String>, // URL to associated media, preferably to decentralized, content-addressed storage
+    pub copies: Option<u64>, // number of copies of this set of metadata in existence when token was minted.
+    // NEW FIELDS
     pub asset_id: Option<String>,
-    pub file_type: Option<String>,
+    pub filetype: Option<String>,
     pub extra: Option<String>, // anything extra the NFT wants to store on-chain. Can be stringified JSON.
+    // TODO: add `updatedAt`? other fields?
+}
+
+#[derive(BorshSerialize, BorshDeserialize)]
+pub enum UpgradableTokenMetadata {
+    V1(TokenMetadataV1),
+    V2(TokenMetadata),
+}
+
+impl From<UpgradableTokenMetadata> for TokenMetadata {
+	fn from(metadata: UpgradableTokenMetadata) -> Self {
+        match metadata {
+            UpgradableTokenMetadata::V2(metadata) => metadata,
+            UpgradableTokenMetadata::V1(v1) => TokenMetadata {
+                title: v1.title,
+                description: v1.description,
+                media: v1.media,
+                copies: v1.copies,
+                asset_id: None,
+                filetype: None,
+                extra: None,
+            }
+        }
+	}
 }
 
 /// Offers details on the contract-level metadata.

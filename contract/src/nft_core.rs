@@ -225,7 +225,7 @@ impl NonFungibleToken {
                     media: Some("a".repeat(64)),
                     copies: Some(1),
                     asset_id: Some(String::from("1")),
-                    file_type: Some(String::from("jpg")),
+                    filetype: Some(String::from("jpg")),
                     extra: Some(String::from("1.json")),
                 },
             );
@@ -532,13 +532,17 @@ impl NonFungibleTokenCore for Contract {
 
         let token = self.tokens.token_metadata_by_id.as_ref().unwrap().get(&token_id);
         let asset_id = &token.as_ref().unwrap().asset_id;
-        let file_type = &token.as_ref().unwrap().file_type;
-        let media = metadata.media.unwrap();
-        // media cid for this series + asset token ID + filetype maps to a media asset on IPFS
-		metadata.media = Some(format!("{}/{}.{}", media, asset_id.clone().unwrap(), file_type.clone().unwrap()));
-        if token_type.json {
+        let filetype = &token.as_ref().unwrap().filetype;
+        let extra = &token.as_ref().unwrap().extra;
+        let media = metadata.clone().media.unwrap();
+        if asset_id.is_some() && filetype.is_some() {
+            // older NFTs (pre-generative upgrade c. 5/31/22) won't have asset_id or file_type
+            // media cid for this series + asset token ID + filetype maps to a media asset on IPFS
+            metadata.media = Some(format!("{}/{}.{}", media.clone(), asset_id.clone().unwrap(), filetype.clone().unwrap()));
+        }
+        if extra.is_some() {
             // media cid for this series + asset token ID + .json maps to a json asset on IPFS
-            metadata.extra = Some(format!("{}/{}.json", media, asset_id.clone().unwrap()));
+            metadata.extra = Some(format!("{}/{}.json", media.clone(), asset_id.clone().unwrap()));
         }
 		
 		// CUSTOM
