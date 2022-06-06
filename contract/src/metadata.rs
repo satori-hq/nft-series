@@ -65,22 +65,22 @@ pub enum UpgradableTokenMetadata {
     V2(TokenMetadata),
 }
 
-impl From<UpgradableTokenMetadata> for TokenMetadata {
-	fn from(metadata: UpgradableTokenMetadata) -> Self {
-        match metadata {
-            UpgradableTokenMetadata::V2(metadata) => metadata,
-            UpgradableTokenMetadata::V1(v1) => TokenMetadata {
-                title: v1.title,
-                description: v1.description,
-                media: v1.media,
-                copies: v1.copies,
-                asset_id: None,
-                filetype: None,
-                extra: None,
-            }
-        }
-	}
-}
+// impl From<UpgradableTokenMetadata> for TokenMetadata {
+// 	fn from(metadata: UpgradableTokenMetadata) -> Self {
+//         match metadata {
+//             UpgradableTokenMetadata::V2(metadata) => metadata,
+//             UpgradableTokenMetadata::V1(v1) => TokenMetadata {
+//                 title: v1.title,
+//                 description: v1.description,
+//                 media: v1.media,
+//                 copies: v1.copies,
+//                 asset_id: None,
+//                 filetype: None,
+//                 extra: None,
+//             }
+//         }
+// 	}
+// }
 
 /// Offers details on the contract-level metadata.
 pub trait NonFungibleTokenMetadataProvider {

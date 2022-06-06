@@ -27,7 +27,7 @@ pub trait ContractSourceMetadataTrait {
 #[near_bindgen]
 impl ContractSourceMetadataTrait for Contract {
     fn contract_source_metadata(&self) -> ContractSourceMetadata {
-        self.contract_metadata.get().unwrap()
+        self.contract_metadata.get().unwrap_or_default()
     }
 
     #[payable]
@@ -36,19 +36,17 @@ impl ContractSourceMetadataTrait for Contract {
 			let owner_id = env::predecessor_account_id();
 			assert_eq!(owner_id.clone(), self.tokens.owner_id, "Unauthorized");
 
-      let source_metadata = self.contract_metadata.get();
-      if let Some(mut source_metadata) = source_metadata {
-        if new_source_metadata.link.is_some() {
-          source_metadata.link = new_source_metadata.link;
-        }
-        if new_source_metadata.version.is_some() {
-          source_metadata.version = new_source_metadata.version;
-        }
-        if new_source_metadata.commit_hash.is_some() {
-          source_metadata.commit_hash = new_source_metadata.commit_hash;
-        }
-        self.contract_metadata.set(&source_metadata);
+      let mut source_metadata = self.contract_metadata.get().unwrap_or_default();
+      if new_source_metadata.link.is_some() {
+        source_metadata.link = new_source_metadata.link;
       }
+      if new_source_metadata.version.is_some() {
+        source_metadata.version = new_source_metadata.version;
+      }
+      if new_source_metadata.commit_hash.is_some() {
+        source_metadata.commit_hash = new_source_metadata.commit_hash;
+      }
+      self.contract_metadata.set(&source_metadata);
       
       let amt_to_refund = if env::storage_usage() > initial_storage_usage { env::storage_usage() - initial_storage_usage } else { initial_storage_usage - env::storage_usage() };
 			refund_deposit(amt_to_refund);

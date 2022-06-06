@@ -134,6 +134,33 @@ pub trait NonFungibleTokenReceiver {
     ) -> PromiseOrValue<bool>;
 }
 
+impl From<NonFungibleTokenV1> for NonFungibleToken {
+    fn from(v1: NonFungibleTokenV1) -> Self {
+        NonFungibleToken {
+            // fields that haven't changed are hooked up to old pointers
+            owner_id: v1.owner_id, // AccountId
+            owner_by_id: v1.owner_by_id, // TreeMap located at StorageKey::NonFungibleToken
+            extra_storage_in_bytes_per_token: v1.extra_storage_in_bytes_per_token, // u64
+            tokens_per_owner: v1.tokens_per_owner, // Option<LookupMap> located at StorageKey::Enumeration
+            approvals_by_id: v1.approvals_by_id, // Option<LookupMap> located at StorageKey::Approval
+            next_approval_id_by_id: v1.next_approval_id_by_id, // Option<LookupMap> located at [StorageKey::Approval, "n".into()].concat()
+            // NEW/UPGRADED FIELDS
+            token_metadata_by_id: Some(LookupMap::new(StorageKey::TokenMetadataV2)),  // new LookupMap to store new individual token metadata
+            token_metadata_by_id_v1: v1.token_metadata_by_id, // Option<LookupMap> located at StorageKey::TokenMetadata; stores existing/old token metadata until it gets updated. at this time, it is removed from token_metadata_by_id_v1 and inserted into token_metadata_by_id_v1
+        }
+        // non_fungible_token.token_metadata_by_id = v1.token_metadata_by_id.unwrap().;
+        // NonFungibleToken::new(
+        //     StorageKey::NonFungibleToken, // old storage key (do we need to use a new storage key here? what happens if you call LookupMap::new(<storage_key>) at a storage_key that is already in use?)
+        //     // StorageKey::NonFungibleTokenV2, // new storage key (do we *need* to use a new storage key here?? can we reuse old one)
+        //     v1.owner_id,
+        //     Some(StorageKey::TokenMetadataV2), // have to use a new storage key here
+        //     Some(StorageKey::EnumerationV2),
+        //     Some(StorageKey::ApprovalV2),
+        //     Some(StorageKey::TokenMetadata), // does this work? this is key of original (old) TokenMetadata (token_metadata_by_id)
+        // )
+    }
+}
+
 /// NEW Implementation of the non-fungible token standard.
 /// Allows to include NEP-171 compatible token to any contract.
 /// There are next traits that any contract may implement:
@@ -144,7 +171,7 @@ pub trait NonFungibleTokenReceiver {
 ///
 /// For example usage, see examples/non-fungible-token/src/lib.rs.
 #[derive(BorshDeserialize, BorshSerialize)]
-pub struct NonFungibleToken {
+pub struct NonFungibleTokenV1 { // OLD
     // owner of contract
     pub owner_id: AccountId,
 
@@ -155,6 +182,32 @@ pub struct NonFungibleToken {
     pub owner_by_id: TreeMap<TokenId, AccountId>,
 
     // required by metadata extension
+    // OLD TOKEN METADATA
+    pub token_metadata_by_id: Option<LookupMap<TokenId, TokenMetadataV1>>,
+
+    // required by enumeration extension
+    pub tokens_per_owner: Option<LookupMap<AccountId, UnorderedSet<TokenId>>>,
+
+    // required by approval extension
+    pub approvals_by_id: Option<LookupMap<TokenId, HashMap<AccountId, u64>>>,
+    pub next_approval_id_by_id: Option<LookupMap<TokenId, u64>>,
+}
+
+#[derive(BorshDeserialize, BorshSerialize)]
+pub struct NonFungibleToken { // CURRENT
+    // owner of contract
+    pub owner_id: AccountId,
+
+    // The storage size in bytes for each new token
+    pub extra_storage_in_bytes_per_token: StorageUsage,
+
+    // always required
+    pub owner_by_id: TreeMap<TokenId, AccountId>,
+
+    // required by metadata extension
+    // OLD TOKEN METADATA
+    pub token_metadata_by_id_v1: Option<LookupMap<TokenId, TokenMetadataV1>>,
+    // CURRENT TOKEN METADATA
     pub token_metadata_by_id: Option<LookupMap<TokenId, TokenMetadata>>,
 
     // required by enumeration extension
@@ -171,20 +224,229 @@ pub struct NonFungibleToken {
 //     TokenPerOwnerInner { account_id_hash: CryptoHash },
 // }
 
+// impl NonFungibleTokenV1 {
+//     pub fn new<Q, R, S, T>(
+//         owner_by_id_prefix: Q,
+//         owner_id: AccountId,
+//         token_metadata_prefix: Option<R>,
+//         enumeration_prefix: Option<S>,
+//         approval_prefix: Option<T>,
+//     ) -> Self
+//     where
+//         Q: IntoStorageKey,
+//         R: IntoStorageKey,
+//         S: IntoStorageKey,
+//         T: IntoStorageKey,
+//     {
+//         let (approvals_by_id, next_approval_id_by_id) = if let Some(prefix) = approval_prefix {
+//             let prefix: Vec<u8> = prefix.into_storage_key();
+//             (
+//                 Some(LookupMap::new(prefix.clone())),
+//                 Some(LookupMap::new([prefix, "n".into()].concat())),
+//             )
+//         } else {
+//             (None, None)
+//         };
+
+//         let mut this = Self {
+//             owner_id,
+//             extra_storage_in_bytes_per_token: 0,
+//             owner_by_id: TreeMap::new(owner_by_id_prefix),
+//             token_metadata_by_id: token_metadata_prefix.map(LookupMap::new),
+//             tokens_per_owner: enumeration_prefix.map(LookupMap::new),
+//             approvals_by_id,
+//             next_approval_id_by_id,
+//         };
+//         this.measure_min_token_storage_cost();
+//         this
+//     }
+
+//     // TODO: does this seem reasonable?
+//     fn measure_min_token_storage_cost(&mut self) {
+//         let initial_storage_usage = env::storage_usage();
+//         let tmp_token_id = "a".repeat(64); // TODO: what's a reasonable max TokenId length?
+//         let tmp_owner_id = AccountId::new_unchecked("a".repeat(64));
+
+//         // 1. set some dummy data
+//         self.owner_by_id.insert(&tmp_token_id, &tmp_owner_id);
+//         if let Some(token_metadata_by_id) = &mut self.token_metadata_by_id {
+//             token_metadata_by_id.insert(
+//                 &tmp_token_id,
+//                 &TokenMetadataV1 {
+//                     title: Some("a".repeat(64)),
+//                     description: Some("a".repeat(64)),
+//                     media: Some("a".repeat(64)),
+//                     copies: Some(1),
+//                 },
+//             );
+//         }
+//         if let Some(tokens_per_owner) = &mut self.tokens_per_owner {
+//             let u = &mut UnorderedSet::new(StorageKey::TokensPerOwner {
+//                 account_hash: env::sha256(tmp_owner_id.as_bytes()),
+//             });
+//             u.insert(&tmp_token_id);
+//             tokens_per_owner.insert(&tmp_owner_id, u);
+//         }
+//         if let Some(approvals_by_id) = &mut self.approvals_by_id {
+//             let mut approvals = HashMap::new();
+//             approvals.insert(tmp_owner_id.clone(), 1u64);
+//             approvals_by_id.insert(&tmp_token_id, &approvals);
+//         }
+//         if let Some(next_approval_id_by_id) = &mut self.next_approval_id_by_id {
+//             next_approval_id_by_id.insert(&tmp_token_id, &1u64);
+//         }
+//         let u = UnorderedSet::new(
+//             StorageKey::TokenPerOwnerInner { account_id_hash: hash_account_id(&tmp_owner_id) }
+//                 .try_to_vec()
+//                 .unwrap(),
+//         );
+//         if let Some(tokens_per_owner) = &mut self.tokens_per_owner {
+//             tokens_per_owner.insert(&tmp_owner_id, &u);
+//         }
+
+//         // 2. see how much space it took
+//         self.extra_storage_in_bytes_per_token = env::storage_usage() - initial_storage_usage;
+
+//         // 3. roll it all back
+//         if let Some(next_approval_id_by_id) = &mut self.next_approval_id_by_id {
+//             next_approval_id_by_id.remove(&tmp_token_id);
+//         }
+//         if let Some(approvals_by_id) = &mut self.approvals_by_id {
+//             approvals_by_id.remove(&tmp_token_id);
+//         }
+//         if let Some(tokens_per_owner) = &mut self.tokens_per_owner {
+//             tokens_per_owner.remove(&tmp_owner_id);
+//         }
+//         if let Some(token_metadata_by_id) = &mut self.token_metadata_by_id {
+//             token_metadata_by_id.remove(&tmp_token_id);
+//         }
+//         if let Some(tokens_per_owner) = &mut self.tokens_per_owner {
+//             tokens_per_owner.remove(&tmp_owner_id);
+//         }
+//         self.owner_by_id.remove(&tmp_token_id);
+//     }
+
+// 	/// Transfer token_id from `from` to `to`
+// 	///
+// 	/// Do not perform any safety checks or do any logging
+// 	pub fn internal_transfer_unguarded(
+// 		&mut self,
+// 		#[allow(clippy::ptr_arg)] token_id: &TokenId,
+// 		from: &AccountId,
+// 		to: &AccountId,
+// 	) {
+// 			// update owner
+// 			self.owner_by_id.insert(token_id, to);
+
+// 			// if using Enumeration standard, update old & new owner's token lists
+// 			if let Some(tokens_per_owner) = &mut self.tokens_per_owner {
+// 			// owner_tokens should always exist, so call `unwrap` without guard
+// 			let mut owner_tokens = tokens_per_owner.get(from).unwrap_or_else(|| {
+// 					env::panic_str("Unable to access tokens per owner in unguarded call.")
+// 			});
+// 			owner_tokens.remove(token_id);
+// 			if owner_tokens.is_empty() {
+// 					tokens_per_owner.remove(from);
+// 			} else {
+// 					tokens_per_owner.insert(from, &owner_tokens);
+// 			}
+
+// 			let mut receiver_tokens = tokens_per_owner.get(to).unwrap_or_else(|| {
+// 					UnorderedSet::new(StorageKey::TokensPerOwner {
+// 							account_hash: env::sha256(to.as_bytes()),
+// 					})
+// 			});
+// 			// let receiver_token_set = if let Some(receiver_token_set) = tokens_per_owner.get(&to) {
+// 			// 	receiver_token_set
+// 			// } else {
+// 			// 	UnorderedSet::new()
+// 			// };
+// 			receiver_tokens.insert(token_id);
+// 			tokens_per_owner.insert(to, &receiver_tokens);
+// 		}
+// 	}
+
+//     /// Transfer from current owner to receiver_id, checking that sender is allowed to transfer.
+//     /// Clear approvals, if approval extension being used.
+//     /// Return previous owner and approvals.
+//     pub fn internal_transfer(
+//         &mut self,
+//         sender_id: &AccountId,
+//         receiver_id: &AccountId,
+//         #[allow(clippy::ptr_arg)] token_id: &TokenId,
+//         approval_id: Option<u64>,
+//         memo: Option<String>,
+//     ) -> (AccountId, Option<HashMap<AccountId, u64>>) {
+//         let owner_id = self.owner_by_id.get(token_id).unwrap_or_else(|| env::panic_str("Token not found"));
+
+//         // clear approvals, if using Approval Management extension
+//         // this will be rolled back by a panic if sending fails
+//         let approved_account_ids = self.approvals_by_id.as_mut().and_then(|by_id| by_id.remove(token_id));
+
+//         // check if authorized
+//         let sender_id = if sender_id != &owner_id {
+//             // if approval extension is NOT being used, or if token has no approved accounts
+//             let app_acc_ids = approved_account_ids.as_ref().unwrap_or_else(|| env::panic_str("Unauthorized"));
+
+//             // Approval extension is being used; get approval_id for sender.
+//             let actual_approval_id = app_acc_ids.get(sender_id);
+
+//             // Panic if sender not approved at all
+//             if actual_approval_id.is_none() {
+//                 env::panic_str("Sender not approved");
+//             }
+
+//             // If approval_id included, check that it matches
+//             require!(
+//                 approval_id.is_none() || actual_approval_id == approval_id.as_ref(),
+//                 format!(
+//                         "The actual approval_id {:?} is different from the given approval_id {:?}",
+//                         actual_approval_id, approval_id
+//                 )
+//             );
+//             Some(sender_id)
+//         } else {
+//             None
+//         };
+
+//         require!(&owner_id != receiver_id, "Current and next owner must differ");
+
+//         self.internal_transfer_unguarded(token_id, &owner_id, receiver_id);
+
+//         // NonFungibleToken::emit_transfer(&owner_id, receiver_id, token_id, sender_id, memo);
+//         env::log_str(format!("{}{}", EVENT_JSON, json!({
+//             "standard": "nep171",
+//             "version": "1.0.0",
+//             "event": "nft_transfer",
+//             "data": [
+//                 {
+//                     "old_owner_id": owner_id, "new_owner_id": receiver_id, "token_ids": [token_id]
+//                 }
+//             ]
+//         })).as_ref());
+
+//         // return previous owner & approvals
+//         (owner_id, approved_account_ids)
+//     }
+// }
+
 impl NonFungibleToken {
-    pub fn new<Q, R, S, T>(
+    pub fn new<Q, R, S, T, U>( // TODO: remove U after upgrade
         owner_by_id_prefix: Q,
         owner_id: AccountId,
         token_metadata_prefix: Option<R>,
         enumeration_prefix: Option<S>,
         approval_prefix: Option<T>,
-    ) -> Self
-    where
-        Q: IntoStorageKey,
-        R: IntoStorageKey,
-        S: IntoStorageKey,
-        T: IntoStorageKey,
-    {
+        token_metadata_prefix_v1: Option<U>, // TODO: remove after upgrade (prefix for old metadata - only for purposes of contract upgrade, should never really be calling this "new" method with this argument present)
+        ) -> Self
+        where
+            Q: IntoStorageKey,
+            R: IntoStorageKey,
+            S: IntoStorageKey,
+            T: IntoStorageKey,
+            U: IntoStorageKey, // TODO: remove after upgrade
+        {
+        log!("Should not be calling this function with token_metadata_prefix_v1 arg present"); // TODO: remove after upgrade
         let (approvals_by_id, next_approval_id_by_id) = if let Some(prefix) = approval_prefix {
             let prefix: Vec<u8> = prefix.into_storage_key();
             (
@@ -200,6 +462,7 @@ impl NonFungibleToken {
             extra_storage_in_bytes_per_token: 0,
             owner_by_id: TreeMap::new(owner_by_id_prefix),
             token_metadata_by_id: token_metadata_prefix.map(LookupMap::new),
+            token_metadata_by_id_v1: token_metadata_prefix_v1.map(LookupMap::new),
             tokens_per_owner: enumeration_prefix.map(LookupMap::new),
             approvals_by_id,
             next_approval_id_by_id,
@@ -284,7 +547,7 @@ impl NonFungibleToken {
 		#[allow(clippy::ptr_arg)] token_id: &TokenId,
 		from: &AccountId,
 		to: &AccountId,
-	) {
+	    ) {
 			// update owner
 			self.owner_by_id.insert(token_id, to);
 
@@ -326,7 +589,7 @@ impl NonFungibleToken {
         #[allow(clippy::ptr_arg)] token_id: &TokenId,
         approval_id: Option<u64>,
         memo: Option<String>,
-) -> (AccountId, Option<HashMap<AccountId, u64>>) {
+        ) -> (AccountId, Option<HashMap<AccountId, u64>>) {
         let owner_id = self.owner_by_id.get(token_id).unwrap_or_else(|| env::panic_str("Token not found"));
 
         // clear approvals, if using Approval Management extension
@@ -530,7 +793,13 @@ impl NonFungibleTokenCore for Contract {
 			);
 		}
 
-        let token = self.tokens.token_metadata_by_id.as_ref().unwrap().get(&token_id);
+        // let token = self.tokens.token_metadata_by_id.as_ref().unwrap().get(&token_id); // PREVIOUS CODE
+        let token = if self.tokens.token_metadata_by_id.as_ref().is_some() {
+            self.tokens.token_metadata_by_id.as_ref().unwrap().get(&token_id)
+        } else {
+            // let v1 = self.tokens.token_metadata_by_id_v1.as_ref().unwrap().get(&token_id);
+            Some(TokenMetadata::from(self.tokens.token_metadata_by_id_v1.as_ref().unwrap().get(&token_id).unwrap()))
+        };
         let asset_id = &token.as_ref().unwrap().asset_id;
         let filetype = &token.as_ref().unwrap().filetype;
         let extra = &token.as_ref().unwrap().extra;
