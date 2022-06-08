@@ -40,7 +40,7 @@ pub trait NonFungibleTokenType {
 		token_type_title: TokenTypeTitle,
 		receiver_id: AccountId,
     _metadata: Option<TokenMetadata>,
-	) -> Token;
+	) -> VersionedToken;
 
 	/// Delete an NFT type/series that is empty (no NFTs minted yet)
 	fn nft_delete_type(
@@ -66,7 +66,7 @@ impl NonFungibleTokenType for Contract {
 
 		// VALIDATION
     let owner_id = env::predecessor_account_id();
-		assert_eq!(owner_id.clone(), self.tokens.owner_id, "Unauthorized");
+		assert_eq!(owner_id.clone(), self.tokens().owner_id, "Unauthorized");
 		// `title` required
 		let title = metadata.title.clone();
 		assert!(title.is_some(), "token_metadata.title is required");
@@ -142,7 +142,7 @@ impl NonFungibleTokenType for Contract {
 			has_json: Some(json),
 		};
 
-		self.token_type_mint_args_by_id.insert(&token_type_id, &mint_args);
+		self.token_type_mint_args_by_id.insert(&token_type_id, &VersionedTokenTypeMintArgs::from(VersionedTokenTypeMintArgs::Current(mint_args)));
 
     refund_deposit(env::storage_usage() - initial_storage_usage);
   }
@@ -151,7 +151,7 @@ impl NonFungibleTokenType for Contract {
 		&mut self,
 		token_type_title: TokenTypeTitle,
 		) {
-		assert_eq!(env::predecessor_account_id(), self.tokens.owner_id, "Unauthorized");
+		assert_eq!(env::predecessor_account_id(), self.tokens().owner_id, "Unauthorized");
 		let token_type_id = self.token_type_by_title.get(&token_type_title).expect("no type");
 		let mut token_type = self.token_type_by_id.get(&token_type_id).expect("no token");
 		token_type.metadata.copies = Some(token_type.tokens.len());
@@ -168,7 +168,7 @@ impl NonFungibleTokenType for Contract {
     ) {
 		let initial_storage_usage = env::storage_usage();
     let owner_id = env::predecessor_account_id();
-		assert_eq!(owner_id.clone(), self.tokens.owner_id, "Unauthorized");
+		assert_eq!(owner_id.clone(), self.tokens().owner_id, "Unauthorized");
 
 		let token_type_id = self.token_type_by_title.get(&token_type_title).expect("no type");
 		let mut token_type = self.token_type_by_id.get(&token_type_id).expect("no token");
@@ -199,9 +199,11 @@ impl NonFungibleTokenType for Contract {
 		token_type_title: TokenTypeTitle,
 		receiver_id: AccountId,
     _metadata: Option<TokenMetadata>,
-		) -> Token {
+		) -> VersionedToken {
 
-		assert_eq!(env::predecessor_account_id(), self.tokens.owner_id, "Unauthorized");
+		// let token_type_mint_args_by_id = self.token_type_mint_args_by_id;
+		// let tokens = self.tokens();
+		assert_eq!(env::predecessor_account_id(), self.tokens().owner_id, "Unauthorized");
 
 		let initial_storage_usage = env::storage_usage();
 
@@ -230,8 +232,15 @@ impl NonFungibleTokenType for Contract {
 		};
 
 		// let mut token_type_mint_args = self.token_type_mint_args_by_id.get(&token_type_id).expect("no mint args");
-		let token_type_mint_args = self.token_type_mint_args_by_id.get(&token_type_id);
-		if let Some(mut token_type_mint_args) = token_type_mint_args {
+		let mint_args = self.token_type_mint_args_by_id.get(&token_type_id);
+		// let token_type_mint_args = versioned_mint_args_to_mint_args(self.token_type_mint_args_by_id.get(&token_type_id).unwrap());
+
+
+		if let Some(VersionedTokenTypeMintArgs::Current(mut token_type_mint_args)) = mint_args {
+		// if let Some(mut token_type_mint_args) = self.token_type_mint_args_by_id.get(&token_type_id) {
+
+			// let mut mint_args = versioned_mint_args_to_mint_args(token_type_mint_args);
+			// let mut mint_args = token_type_mint_args;
 
 			let mut asset_id = 1;
 			let num_filetypes = token_type_mint_args.asset_filetypes.len();
@@ -281,11 +290,12 @@ impl NonFungibleTokenType for Contract {
 					}
 				}
 			}
-			self.token_type_mint_args_by_id.insert(&token_type_id, &token_type_mint_args);
 
 			if token_type_mint_args.has_json == Some(true) {
 				final_metadata.extra = Some(format!("{}.json", asset_id.to_string()))
 			};
+			
+			self.token_type_mint_args_by_id.insert(&token_type_id, &VersionedTokenTypeMintArgs::from(VersionedTokenTypeMintArgs::Current(token_type_mint_args)));
 
 			final_metadata.asset_id = Some(asset_id.to_string());
 			final_metadata.filetype = Some(file_type);
@@ -295,7 +305,7 @@ impl NonFungibleTokenType for Contract {
 		token_type.tokens.insert(&token_id);
 		self.token_type_by_id.insert(&token_type_id, &token_type);
 
-		let token = self.tokens.internal_mint(token_id.clone(), receiver_id.clone(), Some(final_metadata));
+		let token = self.tokens_mut().internal_mint(token_id.clone(), receiver_id.clone(), Some(VersionedTokenMetadata::from(VersionedTokenMetadata::Current(final_metadata))));
 
     refund_deposit(env::storage_usage() - initial_storage_usage);
 
@@ -321,7 +331,7 @@ impl NonFungibleTokenType for Contract {
 	) {
 		let initial_storage_usage = env::storage_usage();
     let owner_id = env::predecessor_account_id();
-		assert_eq!(owner_id.clone(), self.tokens.owner_id, "Unauthorized");
+		assert_eq!(owner_id.clone(), self.tokens().owner_id, "Unauthorized");
 
 		let token_type_id = self.token_type_by_title.get(&token_type_title).expect("no type");
 		let token_type = self.token_type_by_id.get(&token_type_id).expect("no token");

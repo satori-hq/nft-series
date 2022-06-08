@@ -5,6 +5,7 @@ use near_sdk::json_types::Base64VecU8;
 use near_sdk::{require, AccountId};
 use near_sdk::serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+// use std::cmp::PartialEq;
 
 /// This spec can be treated like a version of the standard.
 pub const NFT_METADATA_SPEC: &str = "nft-1.0.0";
@@ -12,14 +13,41 @@ pub const NFT_METADATA_SPEC: &str = "nft-1.0.0";
 /// Note that token IDs for NFTs are strings on NEAR. It's still fine to use autoincrementing numbers as unique IDs if desired, but they should be stringified. This is to make IDs more future-proof as chain-agnostic conventions and standards arise, and allows for more flexibility with considerations like bridging NFTs across chains, etc.
 pub type TokenId = String;
 
-/// In this blah implementation, the Token struct takes two extensions standards (metadata and approval) as optional fields, as they are frequently used in modern NFTs.
+/// In this implementation, the Token struct takes two extensions standards (metadata and approval) as optional fields, as they are frequently used in modern NFTs.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(crate = "near_sdk::serde")]
+pub struct TokenV1 {
+    pub token_id: TokenId,
+    pub owner_id: AccountId,
+    pub metadata: Option<TokenMetadataV1>,
+    pub approved_account_ids: Option<HashMap<AccountId, u64>>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(crate = "near_sdk::serde")]
 pub struct Token {
     pub token_id: TokenId,
     pub owner_id: AccountId,
-    pub metadata: Option<TokenMetadata>,
+    pub metadata: Option<VersionedTokenMetadata>,
     pub approved_account_ids: Option<HashMap<AccountId, u64>>,
+}
+
+// #[derive(BorshSerialize, BorshDeserialize)]
+pub enum VersionedToken {
+    // V1(TokenV1),
+    Current(Token),
+}
+
+pub fn versioned_token_to_token(versioned_token: VersionedToken) -> Token {
+    match versioned_token {
+        VersionedToken::Current(current) => current,
+        // VersionedToken::V1(v1) => Token {
+        //     token_id: v1.token_id,
+        //     owner_id: v1.owner_id,
+        //     metadata: Some(VersionedTokenMetadata::from(VersionedTokenMetadata::V1(v1.metadata.unwrap()))),
+        //     approved_account_ids: v1.approved_account_ids,
+        // }
+    }
 }
 
 /// Metadata for the NFT contract itself.
@@ -59,10 +87,70 @@ pub struct TokenMetadata { // CURRENT TOKEN METADATA
     // TODO: add `updatedAt`? other fields?
 }
 
-#[derive(BorshSerialize, BorshDeserialize)]
-pub enum UpgradableTokenMetadata {
-    V1(TokenMetadataV1),
-    V2(TokenMetadata),
+#[derive(Debug, Clone, PartialEq, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
+#[serde(crate = "near_sdk::serde")]
+pub enum VersionedTokenMetadata {
+    // V1(TokenMetadataV1),
+    Current(TokenMetadata),
+}
+/// Convert TokenMetadataV1 to TokenMetadata
+impl From<TokenMetadataV1> for TokenMetadata {
+	fn from(v1: TokenMetadataV1) -> Self {
+        // match metadata {
+        //     UpgradableTokenMetadata::V2(metadata) => metadata,
+        //     UpgradableTokenMetadata::V1(v1) => TokenMetadata {
+        //             title: v1.title,
+        //             description: v1.description,
+        //             media: v1.media,
+        //             copies: v1.copies,
+        //             asset_id: None,
+        //             filetype: None,
+        //             extra: None,
+        //     }
+        // }
+		TokenMetadata {
+			title: v1.title,
+			description: v1.description,
+			media: v1.media,
+			copies: v1.copies,
+			asset_id: None,
+			filetype: None,
+			extra: None,
+	    }
+	}
+}
+
+/// Convert VersionedTokenMetadata to TokenMetadata
+// impl From<VersionedTokenMetadata> for TokenMetadata {
+// 	fn from(metadata: VersionedTokenMetadata) -> Self {
+//         match metadata {
+//             VersionedTokenMetadata::Current(metadata) => metadata,
+//             VersionedTokenMetadata::V1(v1) => TokenMetadata {
+//                     title: v1.title,
+//                     description: v1.description,
+//                     media: v1.media,
+//                     copies: v1.copies,
+//                     asset_id: None,
+//                     filetype: None,
+//                     extra: None,
+//             }
+//         }
+// 	}
+// }
+
+pub fn versioned_token_metadata_to_token_metadata(versioned_metadata: VersionedTokenMetadata) -> TokenMetadata {
+    match versioned_metadata {
+        VersionedTokenMetadata::Current(current) => current,
+        // VersionedTokenMetadata::V1(v1) => TokenMetadata {
+        //     title: v1.title,
+        //     description: v1.description,
+        //     media: v1.media,
+        //     copies: v1.copies,
+        //     asset_id: None,
+        //     filetype: None,
+        //     extra: None,
+        // }
+    }
 }
 
 // impl From<UpgradableTokenMetadata> for TokenMetadata {

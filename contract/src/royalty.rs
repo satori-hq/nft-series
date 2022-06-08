@@ -23,7 +23,7 @@ impl NonFungibleTokenRoyalty for Contract {
   	//calculates the payout for a token given the passed in balance. This is a view method
 	fn nft_payout(&self, token_id: TokenId, balance: U128, max_len_payout: u32) -> Payout {
 		//get the token object
-		let token = self.nft_token(token_id.clone()).expect("no token");
+		let token = versioned_token_to_token(self.nft_token(token_id.clone()).expect("no token"));
 
 		//get the owner of the token
 		let owner_id = token.owner_id;
@@ -79,7 +79,7 @@ impl NonFungibleTokenRoyalty for Contract {
 
 		// lazy minting?
 		let type_mint_args = memo.clone();
-		let previous_token = if let Some(type_mint_args) = type_mint_args {
+		let previous_token_versioned = if let Some(type_mint_args) = type_mint_args {
 			log!(format!("type_mint_args: {}", type_mint_args));
 			let TypeMintArgs{token_type_title, receiver_id} = near_sdk::serde_json::from_str(&type_mint_args).expect("invalid TypeMintArgs");
 			self.nft_mint_type(token_type_title, receiver_id.clone(), None)
@@ -88,42 +88,43 @@ impl NonFungibleTokenRoyalty for Contract {
 			self.nft_transfer(receiver_id.clone(), token_id.clone(), Some(approval_id), memo);
 			prev_token
 		};
+		let previous_token = versioned_token_to_token(previous_token_versioned);
 
-        // compute payouts based on balance option
-        let owner_id = previous_token.owner_id;
-        let payout_struct = if let Some(balance) = balance {
-			let complete_royalty = 10_000u128;
-            let balance_piece = u128::from(balance) / complete_royalty;
-			let mut total_royalty_percentage = 0;
-            // let mut payout: Payout = HashMap::new();
-			let mut payout_struct: Payout = Payout{
-				payout: HashMap::new()
-			};
-			let mut token_id_iter = token_id.split(TOKEN_DELIMETER);
-			let token_type_id = token_id_iter.next().unwrap().parse().unwrap();
-            let royalty = self.token_type_by_id.get(&token_type_id).expect("no type").royalty;
+		// compute payouts based on balance option
+		let owner_id = previous_token.owner_id;
+		let payout_struct = if let Some(balance) = balance {
+				let complete_royalty = 10_000u128;
+				let balance_piece = u128::from(balance) / complete_royalty;
+				let mut total_royalty_percentage = 0;
+				// let mut payout: Payout = HashMap::new();
+				let mut payout_struct: Payout = Payout{
+					payout: HashMap::new()
+				};
+				let mut token_id_iter = token_id.split(TOKEN_DELIMETER);
+				let token_type_id = token_id_iter.next().unwrap().parse().unwrap();
+				let royalty = self.token_type_by_id.get(&token_type_id).expect("no type").royalty;
 
-            if let Some(max_len_payout) = max_len_payout {
-                assert!(royalty.len() as u32 <= max_len_payout, "exceeds max_len_payout");
-            }
-            for (k, v) in royalty.iter() {
-                let key = k.clone();
-				// skip seller and payout once at end
-                if key != owner_id {
-                    payout_struct.payout.insert(key, U128(*v as u128 * balance_piece));
-                    total_royalty_percentage += *v;
-                }
-            }
-            // payout to seller
-						let seller_payout = (complete_royalty - total_royalty_percentage as u128) * balance_piece;
-						if seller_payout > 0 {
-							payout_struct.payout.insert(owner_id.clone(), U128(seller_payout));
+				if let Some(max_len_payout) = max_len_payout {
+						assert!(royalty.len() as u32 <= max_len_payout, "exceeds max_len_payout");
+				}
+				for (k, v) in royalty.iter() {
+						let key = k.clone();
+						// skip seller and payout once at end
+						if key != owner_id {
+								payout_struct.payout.insert(key, U128(*v as u128 * balance_piece));
+								total_royalty_percentage += *v;
 						}
-            // payout_struct.payout.insert(owner_id.clone(), U128((complete_royalty - total_royalty_percentage as u128) * balance_piece));
-            Some(payout_struct)
-        } else {
-            None
-        };
+				}
+				// payout to seller
+				let seller_payout = (complete_royalty - total_royalty_percentage as u128) * balance_piece;
+				if seller_payout > 0 {
+					payout_struct.payout.insert(owner_id.clone(), U128(seller_payout));
+				}
+				// payout_struct.payout.insert(owner_id.clone(), U128((complete_royalty - total_royalty_percentage as u128) * balance_piece));
+				Some(payout_struct)
+		} else {
+				None
+		};
 
 		env::log_str(format!("{}{}", EVENT_JSON, json!({
 			"standard": "nep171",
@@ -136,7 +137,7 @@ impl NonFungibleTokenRoyalty for Contract {
 			]
 		})).as_ref());
 
-        payout_struct
+    payout_struct
 	}
 
 }
