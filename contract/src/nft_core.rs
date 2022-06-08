@@ -146,7 +146,7 @@ impl From<NonFungibleTokenV1> for NonFungibleToken {
             next_approval_id_by_id: v1.next_approval_id_by_id, // Option<LookupMap> located at [StorageKey::Approval, "n".into()].concat()
             // NEW/UPGRADED FIELDS
             token_metadata_by_id: Some(LookupMap::new(StorageKey::TokenMetadataV2)),  // new LookupMap to store new individual token metadata
-            token_metadata_by_id_v1: v1.token_metadata_by_id, // Option<LookupMap> located at StorageKey::TokenMetadata; stores existing/old token metadata until it gets updated. at this time, it is removed from token_metadata_by_id_v1 and inserted into token_metadata_by_id_v1
+            // token_metadata_by_id_v1: v1.token_metadata_by_id, // Option<LookupMap> located at StorageKey::TokenMetadata; stores existing/old token metadata until it gets updated. at this time, it is removed from token_metadata_by_id_v1 and inserted into token_metadata_by_id_v1
         }
         // non_fungible_token.token_metadata_by_id = v1.token_metadata_by_id.unwrap().;
         // NonFungibleToken::new(
@@ -224,7 +224,7 @@ pub struct NonFungibleToken { // CURRENT
 
     // required by metadata extension
     // OLD TOKEN METADATA
-    pub token_metadata_by_id_v1: Option<LookupMap<TokenId, TokenMetadataV1>>,
+    // pub token_metadata_by_id_v1: Option<LookupMap<TokenId, TokenMetadataV1>>,
     // CURRENT TOKEN METADATA
     pub token_metadata_by_id: Option<LookupMap<TokenId, VersionedTokenMetadata>>,
 
@@ -481,22 +481,22 @@ impl NonFungibleTokenV1 {
 }
 
 impl NonFungibleToken {
-    pub fn new<Q, R, S, T, U>( // TODO: remove U after upgrade
+    pub fn new<Q, R, S, T>( // TODO: remove U after upgrade
         owner_by_id_prefix: Q,
         owner_id: AccountId,
         token_metadata_prefix: Option<R>,
         enumeration_prefix: Option<S>,
         approval_prefix: Option<T>,
-        token_metadata_prefix_v1: Option<U>, // TODO: remove after upgrade (prefix for old metadata - only for purposes of contract upgrade, should never really be calling this "new" method with this argument present)
+        // token_metadata_prefix_v1: Option<U>, // TODO: remove after upgrade (prefix for old metadata - only for purposes of contract upgrade, should never really be calling this "new" method with this argument present)
         ) -> Self
         where
             Q: IntoStorageKey,
             R: IntoStorageKey,
             S: IntoStorageKey,
             T: IntoStorageKey,
-            U: IntoStorageKey, // TODO: remove after upgrade
+            // U: IntoStorageKey, // TODO: remove after upgrade
         {
-        log!("Should not be calling this function with token_metadata_prefix_v1 arg present"); // TODO: remove after upgrade
+        // log!("Should not be calling this function with token_metadata_prefix_v1 arg present"); // TODO: remove after upgrade
         let (approvals_by_id, next_approval_id_by_id) = if let Some(prefix) = approval_prefix {
             let prefix: Vec<u8> = prefix.into_storage_key();
             (
@@ -512,7 +512,7 @@ impl NonFungibleToken {
             extra_storage_in_bytes_per_token: 0,
             owner_by_id: TreeMap::new(owner_by_id_prefix),
             token_metadata_by_id: token_metadata_prefix.map(LookupMap::new),
-            token_metadata_by_id_v1: token_metadata_prefix_v1.map(LookupMap::new),
+            // token_metadata_by_id_v1: token_metadata_prefix_v1.map(LookupMap::new),
             tokens_per_owner: enumeration_prefix.map(LookupMap::new),
             approvals_by_id,
             next_approval_id_by_id,

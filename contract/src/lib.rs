@@ -142,7 +142,7 @@ pub enum StorageKey {
 		NonFungibleTokenV2, // current
     Metadata,
 		SourceMetadata,
-    TokenMetadata, // to deprecate
+    TokenMetadata, // to deprecate (tokens_v1.token_metadata_by_id stored here)
 		TokenMetadataV2, // current
     Enumeration, // to deprecate
 		EnumerationV2, // current
@@ -166,7 +166,7 @@ impl From<ContractV1> for Contract {
 			Some(StorageKey::TokenMetadataV2),
 			Some(StorageKey::EnumerationV2),
 			Some(StorageKey::ApprovalV2),
-			Some(StorageKey::TokenMetadataV2),
+			// Some(StorageKey::TokenMetadata),
 		);
 		Contract {
 			// fields that haven't changed are hooked up to old pointers
@@ -221,12 +221,11 @@ impl Contract {
 						),
             tokens: VersionedNonFungibleToken::from(VersionedNonFungibleToken::Current(NonFungibleToken::new(
 							// have to use V2 storage keys to not conflict with state at existing storage keys
-							StorageKey::NonFungibleToken,
+							StorageKey::NonFungibleTokenV2,
 							owner_id.clone(),
 							Some(StorageKey::TokenMetadataV2),
-							Some(StorageKey::Enumeration),
-							Some(StorageKey::Approval),
-							Some(StorageKey::TokenMetadata),
+							Some(StorageKey::EnumerationV2),
+							Some(StorageKey::ApprovalV2),
 						))),
 						token_type_by_id: UnorderedMap::new(StorageKey::TokenTypeById),
 						token_type_by_title: LookupMap::new(StorageKey::TokenTypeByTitle),
