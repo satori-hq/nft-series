@@ -31,16 +31,16 @@ pub fn versioned_source_metadata_to_source_metadata(versioned_source_metadata: V
 /// Contract source metadata trait
 pub trait ContractSourceMetadataTrait {
   /// PUBLIC - View contract source metadata (Git references)
-	fn contract_source_metadata(&self) -> Option<VersionedContractSourceMetadata>;
+	fn contract_source_metadata(&self) -> Option<ContractSourceMetadata>;
   /// OWNER-ONLY - Patch/update contract source metadata
   fn patch_contract_source_metadata(&mut self, new_source_metadata: ContractSourceMetadata);
 }
 
 #[near_bindgen]
 impl ContractSourceMetadataTrait for Contract {
-    fn contract_source_metadata(&self) -> Option<VersionedContractSourceMetadata> {
+    fn contract_source_metadata(&self) -> Option<ContractSourceMetadata> {
         let source_metadata = self.contract_source_metadata.get();
-        source_metadata
+        Some(versioned_source_metadata_to_source_metadata(source_metadata.unwrap()))
         // if source_metadata.is_some() {
         //   Some(source_metadata.unwrap())
         // } else {

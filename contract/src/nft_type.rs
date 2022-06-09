@@ -40,7 +40,8 @@ pub trait NonFungibleTokenType {
 		token_type_title: TokenTypeTitle,
 		receiver_id: AccountId,
     _metadata: Option<TokenMetadata>,
-	) -> VersionedToken;
+	// ) -> VersionedToken;
+) -> Token;
 
 	/// Delete an NFT type/series that is empty (no NFTs minted yet)
 	fn nft_delete_type(
@@ -199,7 +200,8 @@ impl NonFungibleTokenType for Contract {
 		token_type_title: TokenTypeTitle,
 		receiver_id: AccountId,
     _metadata: Option<TokenMetadata>,
-		) -> VersionedToken {
+		// ) -> VersionedToken {
+		) -> Token {
 
 		// let token_type_mint_args_by_id = self.token_type_mint_args_by_id;
 		// let tokens = self.tokens();
@@ -305,7 +307,8 @@ impl NonFungibleTokenType for Contract {
 		token_type.tokens.insert(&token_id);
 		self.token_type_by_id.insert(&token_type_id, &token_type);
 
-		let token = self.tokens_mut().internal_mint(token_id.clone(), receiver_id.clone(), Some(VersionedTokenMetadata::from(VersionedTokenMetadata::Current(final_metadata))));
+		// let token = self.tokens_mut().internal_mint(token_id.clone(), receiver_id.clone(), Some(VersionedTokenMetadata::from(VersionedTokenMetadata::Current(final_metadata))));
+		let token = self.tokens_mut().internal_mint(token_id.clone(), receiver_id.clone(), Some(final_metadata));
 
     refund_deposit(env::storage_usage() - initial_storage_usage);
 

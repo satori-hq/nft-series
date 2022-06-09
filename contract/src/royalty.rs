@@ -23,7 +23,8 @@ impl NonFungibleTokenRoyalty for Contract {
   	//calculates the payout for a token given the passed in balance. This is a view method
 	fn nft_payout(&self, token_id: TokenId, balance: U128, max_len_payout: u32) -> Payout {
 		//get the token object
-		let token = versioned_token_to_token(self.nft_token(token_id.clone()).expect("no token"));
+		// let token = versioned_token_to_token(self.nft_token(token_id.clone()).expect("no token"));
+		let token = self.nft_token(token_id.clone()).expect("no token");
 
 		//get the owner of the token
 		let owner_id = token.owner_id;
@@ -79,7 +80,7 @@ impl NonFungibleTokenRoyalty for Contract {
 
 		// lazy minting?
 		let type_mint_args = memo.clone();
-		let previous_token_versioned = if let Some(type_mint_args) = type_mint_args {
+		let previous_token = if let Some(type_mint_args) = type_mint_args {
 			log!(format!("type_mint_args: {}", type_mint_args));
 			let TypeMintArgs{token_type_title, receiver_id} = near_sdk::serde_json::from_str(&type_mint_args).expect("invalid TypeMintArgs");
 			self.nft_mint_type(token_type_title, receiver_id.clone(), None)
@@ -88,7 +89,7 @@ impl NonFungibleTokenRoyalty for Contract {
 			self.nft_transfer(receiver_id.clone(), token_id.clone(), Some(approval_id), memo);
 			prev_token
 		};
-		let previous_token = versioned_token_to_token(previous_token_versioned);
+		// let previous_token = versioned_token_to_token(previous_token_versioned);
 
 		// compute payouts based on balance option
 		let owner_id = previous_token.owner_id;

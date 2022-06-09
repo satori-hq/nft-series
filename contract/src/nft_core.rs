@@ -93,7 +93,8 @@ pub trait NonFungibleTokenCore {
   ) -> PromiseOrValue<bool>;
 
   /// Returns the token with the given `token_id` or `null` if no such token.
-  fn nft_token(&self, token_id: TokenId) -> Option<VersionedToken>;
+    //   fn nft_token(&self, token_id: TokenId) -> Option<VersionedToken>;
+    fn nft_token(&self, token_id: TokenId) -> Option<Token>;
 }
 
 #[ext_contract(ext_self)]
@@ -226,7 +227,8 @@ pub struct NonFungibleToken { // CURRENT
     // OLD TOKEN METADATA
     // pub token_metadata_by_id_v1: Option<LookupMap<TokenId, TokenMetadataV1>>,
     // CURRENT TOKEN METADATA
-    pub token_metadata_by_id: Option<LookupMap<TokenId, VersionedTokenMetadata>>,
+    // pub token_metadata_by_id: Option<LookupMap<TokenId, VersionedTokenMetadata>>,
+    pub token_metadata_by_id: Option<LookupMap<TokenId, TokenMetadata>>,
 
     // required by enumeration extension
     pub tokens_per_owner: Option<LookupMap<AccountId, UnorderedSet<TokenId>>>,
@@ -541,7 +543,8 @@ impl NonFungibleToken {
             };
             token_metadata_by_id.insert(
                 &tmp_token_id,
-                &VersionedTokenMetadata::from(VersionedTokenMetadata::Current(token)),
+                // &VersionedTokenMetadata::from(VersionedTokenMetadata::Current(token)),
+                &token,
             );
         }
         if let Some(tokens_per_owner) = &mut self.tokens_per_owner {
@@ -709,8 +712,10 @@ impl NonFungibleToken {
         &mut self,
         token_id: TokenId,
         token_owner_id: AccountId,
-        token_metadata: Option<VersionedTokenMetadata>,
-    ) -> VersionedToken {
+        // token_metadata: Option<VersionedTokenMetadata>,
+        token_metadata: Option<TokenMetadata>,
+    // ) -> VersionedToken {
+        ) -> Token {
         assert_eq!(env::predecessor_account_id(), self.owner_id, "Unauthorized");
 
         self.internal_mint(token_id, token_owner_id, token_metadata)
@@ -722,8 +727,10 @@ impl NonFungibleToken {
         &mut self,
         token_id: TokenId,
         token_owner_id: AccountId,
-        token_metadata: Option<VersionedTokenMetadata>,
-    ) -> VersionedToken {
+        // token_metadata: Option<VersionedTokenMetadata>,
+        token_metadata: Option<TokenMetadata>,
+    // ) -> VersionedToken {
+    ) -> Token {
         let initial_storage_usage = env::storage_usage();
         if self.token_metadata_by_id.is_some() && token_metadata.is_none() {
             env::panic_str("Must provide metadata");
@@ -764,7 +771,8 @@ impl NonFungibleToken {
 
         let token = Token { token_id, owner_id, metadata: token_metadata, approved_account_ids };
         // convert to VersionedToken and return
-        VersionedToken::from(VersionedToken::Current(token))
+        // VersionedToken::from(VersionedToken::Current(token))
+        token
 
     }
 }
@@ -819,7 +827,7 @@ impl NonFungibleTokenCore for Contract {
         .into()
     }
 
-	fn nft_token(&self, token_id: TokenId) -> Option<VersionedToken> {
+	fn nft_token(&self, token_id: TokenId) -> Option<Token> {
         let tokens = self.tokens();
 		let owner_id = tokens.owner_by_id.get(&token_id)?;
         let approved_account_ids = tokens
@@ -854,9 +862,9 @@ impl NonFungibleTokenCore for Contract {
         //     // let v1 = self.tokens.token_metadata_by_id_v1.as_ref().unwrap().get(&token_id);
         //     Some(TokenMetadata::from(self.tokens.token_metadata_by_id_v1.as_ref().unwrap().get(&token_id).unwrap()))
         // };
-        let unwrapped = token_metadata_versioned.unwrap();
+        let token_metadata = token_metadata_versioned.unwrap();
         // let token_metadata = TokenMetadata::from(unwrapped);
-        let token_metadata = versioned_token_metadata_to_token_metadata(unwrapped);
+        // let token_metadata = versioned_token_metadata_to_token_metadata(unwrapped);
         let asset_id = &token_metadata.asset_id;
         let filetype = &token_metadata.filetype;
         let extra = &token_metadata.extra;
@@ -879,10 +887,11 @@ impl NonFungibleTokenCore for Contract {
         let token = Token {
             token_id,
             owner_id,
-            metadata: Some(VersionedTokenMetadata::from(VersionedTokenMetadata::Current(final_metadata))),
+            // metadata: Some(VersionedTokenMetadata::from(VersionedTokenMetadata::Current(final_metadata))),
+            metadata: Some(final_metadata),
             approved_account_ids,
         };
-        Some(VersionedToken::from(VersionedToken::Current(token)))
+        Some(token)
 	}
 }
 

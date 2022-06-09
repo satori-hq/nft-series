@@ -8,7 +8,8 @@ trait NonFungibleTokenEnumeration {
   fn nft_total_supply(&self) -> U128;
 
   /// get token objects for all NFTs on this contract, using `from_index` as starting point (if provided) and limiting count to `limit` (if provided)
-  fn nft_tokens(&self, from_index: Option<U128>, limit: Option<u64>) -> Vec<VersionedToken>;
+  // fn nft_tokens(&self, from_index: Option<U128>, limit: Option<u64>) -> Vec<VersionedToken>;
+  fn nft_tokens(&self, from_index: Option<U128>, limit: Option<u64>) -> Vec<Token>;
 
   /// get all token IDs on this contract, using `from_index` as starting point (if provided) and limiting count to `limit` (if provided).
   /// Added for the purposes of upgrading metadata for existing tokens
@@ -23,7 +24,8 @@ trait NonFungibleTokenEnumeration {
     account_id: AccountId,
     from_index: Option<U128>,
     limit: Option<u64>,
-  ) -> Vec<VersionedToken>;
+  // ) -> Vec<VersionedToken>;
+  ) -> Vec<Token>;
 
   /// get info on a specific type/series, by title
   fn nft_get_type(&self, token_type_title: TokenTypeTitle) -> TokenTypeJson;
@@ -50,7 +52,7 @@ trait NonFungibleTokenEnumeration {
     token_type_title: TokenTypeTitle,
     from_index: Option<U128>,
     limit: Option<u64>
-  ) -> Vec<VersionedToken>;
+  ) -> Vec<Token>;
 
 }
 
@@ -61,7 +63,8 @@ impl NonFungibleTokenEnumeration for Contract {
     (self.tokens().owner_by_id.len() as u128).into()
   }
   
-  fn nft_tokens(&self, from_index: Option<U128>, limit: Option<u64>) -> Vec<VersionedToken> {
+  // fn nft_tokens(&self, from_index: Option<U128>, limit: Option<u64>) -> Vec<VersionedToken> {
+    fn nft_tokens(&self, from_index: Option<U128>, limit: Option<u64>) -> Vec<Token> {
       // Get starting index, whether or not it was explicitly given.
       // Defaults to 0 based on the spec:
       // https://nomicon.io/Standards/NonFungibleToken/Enumeration.html#interface
@@ -117,7 +120,8 @@ impl NonFungibleTokenEnumeration for Contract {
         account_id: AccountId,
         from_index: Option<U128>,
         limit: Option<u64>,
-    ) -> Vec<VersionedToken> {
+    // ) -> Vec<VersionedToken> {
+    ) -> Vec<Token> {
         let tokens_per_owner = self.tokens().tokens_per_owner.as_ref().expect(
             "Could not find tokens_per_owner when calling a method on the enumeration standard.",
         );
@@ -192,7 +196,8 @@ impl NonFungibleTokenEnumeration for Contract {
     token_type_title: TokenTypeTitle,
     from_index: Option<U128>,
     limit: Option<u64>
-  ) -> Vec<VersionedToken> {
+  // ) -> Vec<VersionedToken> {
+  ) -> Vec<Token> {
     let start_index: u128 = from_index.map(From::from).unwrap_or_default();
     let tokens = self.token_type_by_id.get(&self.token_type_by_title.get(&token_type_title).expect("no type")).expect("no type").tokens;
     assert!(
