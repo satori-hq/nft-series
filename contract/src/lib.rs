@@ -212,7 +212,6 @@ impl Contract {
         metadata.assert_valid();
         Self {
 						tokens_v1: NonFungibleTokenV1::new(
-							// have to use V2 storage keys to not conflict with state at existing storage keys
 							StorageKey::NonFungibleToken,
 							owner_id.clone(),
 							Some(StorageKey::TokenMetadata),
