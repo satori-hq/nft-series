@@ -16,7 +16,8 @@ pub struct ContractSourceMetadata {
 	pub link: Option<String>,
 }
 
-#[derive(BorshSerialize, BorshDeserialize)]
+#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
+#[serde(crate = "near_sdk::serde")]
 pub enum VersionedContractSourceMetadata { 
     Current(ContractSourceMetadata),
 }
@@ -35,51 +36,51 @@ pub trait ContractSourceMetadataTrait {
   fn patch_contract_source_metadata(&mut self, new_source_metadata: ContractSourceMetadata);
 }
 
-// #[near_bindgen]
-// impl ContractSourceMetadataTrait for Contract {
-//     fn contract_source_metadata(&self) -> Option<VersionedContractSourceMetadata> {
-//         let source_metadata = self.contract_source_metadata.get();
-//         source_metadata
-//         // if source_metadata.is_some() {
-//         //   Some(source_metadata.unwrap())
-//         // } else {
-//         //   None
-//         // }
-//     }
+#[near_bindgen]
+impl ContractSourceMetadataTrait for Contract {
+    fn contract_source_metadata(&self) -> Option<VersionedContractSourceMetadata> {
+        let source_metadata = self.contract_source_metadata.get();
+        source_metadata
+        // if source_metadata.is_some() {
+        //   Some(source_metadata.unwrap())
+        // } else {
+        //   None
+        // }
+    }
 
-//     #[payable]
-//     fn patch_contract_source_metadata(&mut self, new_source_metadata: ContractSourceMetadata) {
-//       let initial_storage_usage = env::storage_usage();
-// 			let owner_id = env::predecessor_account_id();
-// 			assert_eq!(owner_id.clone(), self.tokens().owner_id, "Unauthorized");
+    #[payable]
+    fn patch_contract_source_metadata(&mut self, new_source_metadata: ContractSourceMetadata) {
+      let initial_storage_usage = env::storage_usage();
+			let owner_id = env::predecessor_account_id();
+			assert_eq!(owner_id.clone(), self.tokens().owner_id, "Unauthorized");
 
-//       let mut source_metadata_option = self.contract_source_metadata.get();
-//       let mut source_metadata = if source_metadata_option.is_some() {
-//         versioned_source_metadata_to_source_metadata(source_metadata_option.unwrap())
-//       } else {
-//         ContractSourceMetadata {
-//           version: None,
-//           commit_hash: None,
-//           link: None,
-//         }
-//       };
-//       // .unwrap_or(ContractSourceMetadata {
-//       //   version: None,
-//       //   commit_hash: None,
-//       //   link: None,
-//       // });
-//       if new_source_metadata.link.is_some() {
-//         source_metadata.link = new_source_metadata.link;
-//       }
-//       if new_source_metadata.version.is_some() {
-//         source_metadata.version = new_source_metadata.version;
-//       }
-//       if new_source_metadata.commit_hash.is_some() {
-//         source_metadata.commit_hash = new_source_metadata.commit_hash;
-//       }
-//       self.contract_source_metadata.set(&VersionedContractSourceMetadata::from(VersionedContractSourceMetadata::Current(source_metadata)));
+      let mut source_metadata_option = self.contract_source_metadata.get();
+      let mut source_metadata = if source_metadata_option.is_some() {
+        versioned_source_metadata_to_source_metadata(source_metadata_option.unwrap())
+      } else {
+        ContractSourceMetadata {
+          version: None,
+          commit_hash: None,
+          link: None,
+        }
+      };
+      // .unwrap_or(ContractSourceMetadata {
+      //   version: None,
+      //   commit_hash: None,
+      //   link: None,
+      // });
+      if new_source_metadata.link.is_some() {
+        source_metadata.link = new_source_metadata.link;
+      }
+      if new_source_metadata.version.is_some() {
+        source_metadata.version = new_source_metadata.version;
+      }
+      if new_source_metadata.commit_hash.is_some() {
+        source_metadata.commit_hash = new_source_metadata.commit_hash;
+      }
+      self.contract_source_metadata.set(&VersionedContractSourceMetadata::from(VersionedContractSourceMetadata::Current(source_metadata)));
       
-//       let amt_to_refund = if env::storage_usage() > initial_storage_usage { env::storage_usage() - initial_storage_usage } else { initial_storage_usage - env::storage_usage() };
-// 			refund_deposit(amt_to_refund);
-//     }
-// }
+      let amt_to_refund = if env::storage_usage() > initial_storage_usage { env::storage_usage() - initial_storage_usage } else { initial_storage_usage - env::storage_usage() };
+			refund_deposit(amt_to_refund);
+    }
+}

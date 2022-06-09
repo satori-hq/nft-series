@@ -28,8 +28,7 @@ mod contract_source;
 /// CUSTOM TYPES
 
 /// payout series for royalties to market
-#[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
-#[derive(Serialize)]
+#[derive(BorshDeserialize, BorshSerialize, Serialize, PanicOnDefault)]
 #[serde(crate = "near_sdk::serde")]
 pub struct Payout {
 	payout: HashMap<AccountId, U128>
@@ -82,9 +81,7 @@ pub struct TypeMintArgs {
 
 /// Contains potentially large vectors which are used when minting NFTs for a type.
 /// Stored in separate struct rather than on `TokenType` to avoid using gas on loading these vectors into memory on enumeration methods, e.g. `nft_token`
-#[derive(Debug)]
-#[derive(BorshDeserialize, BorshSerialize)]
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, BorshDeserialize, BorshSerialize, Serialize, Deserialize)]
 #[serde(crate = "near_sdk::serde")]
 pub struct TokenTypeMintArgs {
 	asset_filetypes: Vec<String>, // e.g. jpg, png, mp4

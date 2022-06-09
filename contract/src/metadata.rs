@@ -32,7 +32,8 @@ pub struct Token {
     pub approved_account_ids: Option<HashMap<AccountId, u64>>,
 }
 
-// #[derive(BorshSerialize, BorshDeserialize)]
+#[derive(Serialize, Deserialize)]
+#[serde(crate = "near_sdk::serde")]
 pub enum VersionedToken {
     // V1(TokenV1),
     Current(Token),

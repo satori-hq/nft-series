@@ -182,340 +182,340 @@ describe("NFT Series", function () {
     );
   });
 
-  it("should error if owner attempts to create a type with invalid arguments", async function () {
-    typeCopies = 10;
+  // it("should error if owner attempts to create a type with invalid arguments", async function () {
+  //   typeCopies = 10;
 
-    // no `json` field
-    let invalidArgs = {
-      metadata: {
-        title: token_type_title_non_gen,
-        media: "bafkreibael4nenayqy45ijuvgcpkmyscbt3q35mtbzbeabopmugdwr5r64",
-        copies: typeCopies,
-      },
-      asset_count: 1,
-      asset_filetypes,
-      royalty: {
-        [bobId]: BOB_ROYALTY,
-      },
-    };
+  //   // no `json` field
+  //   let invalidArgs = {
+  //     metadata: {
+  //       title: token_type_title_non_gen,
+  //       media: "bafkreibael4nenayqy45ijuvgcpkmyscbt3q35mtbzbeabopmugdwr5r64",
+  //       copies: typeCopies,
+  //     },
+  //     asset_count: 1,
+  //     asset_filetypes,
+  //     royalty: {
+  //       [bobId]: BOB_ROYALTY,
+  //     },
+  //   };
 
-    try {
-      await testUtils.createType(
-        contractAccount,
-        contractId,
-        invalidArgs,
-        parseNearAmount("3")
-      );
-      assert(false);
-    } catch {
-      assert(true);
-    }
+  //   try {
+  //     await testUtils.createType(
+  //       contractAccount,
+  //       contractId,
+  //       invalidArgs,
+  //       parseNearAmount("3")
+  //     );
+  //     assert(false);
+  //   } catch {
+  //     assert(true);
+  //   }
 
-    // no `metadata.title`
-    invalidArgs = {
-      metadata: {
-        media: "bafkreibael4nenayqy45ijuvgcpkmyscbt3q35mtbzbeabopmugdwr5r64",
-        copies: typeCopies,
-      },
-      asset_count: 1,
-      asset_filetypes,
-      royalty: {
-        [bobId]: BOB_ROYALTY,
-      },
-      json,
-    };
+  //   // no `metadata.title`
+  //   invalidArgs = {
+  //     metadata: {
+  //       media: "bafkreibael4nenayqy45ijuvgcpkmyscbt3q35mtbzbeabopmugdwr5r64",
+  //       copies: typeCopies,
+  //     },
+  //     asset_count: 1,
+  //     asset_filetypes,
+  //     royalty: {
+  //       [bobId]: BOB_ROYALTY,
+  //     },
+  //     json,
+  //   };
 
-    try {
-      await testUtils.createType(
-        contractAccount,
-        contractId,
-        invalidArgs,
-        parseNearAmount("3")
-      );
-      assert(false);
-    } catch {
-      assert(true);
-    }
+  //   try {
+  //     await testUtils.createType(
+  //       contractAccount,
+  //       contractId,
+  //       invalidArgs,
+  //       parseNearAmount("3")
+  //     );
+  //     assert(false);
+  //   } catch {
+  //     assert(true);
+  //   }
 
-    // invalid `metadata.title`
-    invalidArgs = {
-      ...invalidArgs,
-      metadata: {
-        title: 1,
-        media: "bafkreibael4nenayqy45ijuvgcpkmyscbt3q35mtbzbeabopmugdwr5r64",
-        copies: typeCopies,
-      },
-    };
+  //   // invalid `metadata.title`
+  //   invalidArgs = {
+  //     ...invalidArgs,
+  //     metadata: {
+  //       title: 1,
+  //       media: "bafkreibael4nenayqy45ijuvgcpkmyscbt3q35mtbzbeabopmugdwr5r64",
+  //       copies: typeCopies,
+  //     },
+  //   };
 
-    try {
-      await testUtils.createType(
-        contractAccount,
-        contractId,
-        invalidArgs,
-        parseNearAmount("3")
-      );
-      assert(false);
-    } catch {
-      assert(true);
-    }
+  //   try {
+  //     await testUtils.createType(
+  //       contractAccount,
+  //       contractId,
+  //       invalidArgs,
+  //       parseNearAmount("3")
+  //     );
+  //     assert(false);
+  //   } catch {
+  //     assert(true);
+  //   }
 
-    // no `metadata.media`
-    invalidArgs = {
-      ...invalidArgs,
-      metadata: {
-        title: token_type_title_non_gen,
-        copies: typeCopies,
-      },
-    };
+  //   // no `metadata.media`
+  //   invalidArgs = {
+  //     ...invalidArgs,
+  //     metadata: {
+  //       title: token_type_title_non_gen,
+  //       copies: typeCopies,
+  //     },
+  //   };
 
-    try {
-      await testUtils.createType(
-        contractAccount,
-        contractId,
-        invalidArgs,
-        parseNearAmount("3")
-      );
-      assert(false);
-    } catch {
-      assert(true);
-    }
+  //   try {
+  //     await testUtils.createType(
+  //       contractAccount,
+  //       contractId,
+  //       invalidArgs,
+  //       parseNearAmount("3")
+  //     );
+  //     assert(false);
+  //   } catch {
+  //     assert(true);
+  //   }
 
-    // invalid `metadata.media`
-    invalidArgs = {
-      ...invalidArgs,
-      metadata: {
-        title: token_type_title_non_gen,
-        media: 1,
-        copies: typeCopies,
-      },
-    };
+  //   // invalid `metadata.media`
+  //   invalidArgs = {
+  //     ...invalidArgs,
+  //     metadata: {
+  //       title: token_type_title_non_gen,
+  //       media: 1,
+  //       copies: typeCopies,
+  //     },
+  //   };
 
-    try {
-      await testUtils.createType(
-        contractAccount,
-        contractId,
-        invalidArgs,
-        parseNearAmount("3")
-      );
-      assert(false);
-    } catch {
-      assert(true);
-    }
+  //   try {
+  //     await testUtils.createType(
+  //       contractAccount,
+  //       contractId,
+  //       invalidArgs,
+  //       parseNearAmount("3")
+  //     );
+  //     assert(false);
+  //   } catch {
+  //     assert(true);
+  //   }
 
-    // no `metadata.copies`
-    invalidArgs = {
-      ...invalidArgs,
-      metadata: {
-        title: token_type_title_non_gen,
-        media: "bafkreibael4nenayqy45ijuvgcpkmyscbt3q35mtbzbeabopmugdwr5r64",
-      },
-    };
+  //   // no `metadata.copies`
+  //   invalidArgs = {
+  //     ...invalidArgs,
+  //     metadata: {
+  //       title: token_type_title_non_gen,
+  //       media: "bafkreibael4nenayqy45ijuvgcpkmyscbt3q35mtbzbeabopmugdwr5r64",
+  //     },
+  //   };
 
-    try {
-      await testUtils.createType(
-        contractAccount,
-        contractId,
-        invalidArgs,
-        parseNearAmount("3")
-      );
-      assert(false);
-    } catch {
-      assert(true);
-    }
+  //   try {
+  //     await testUtils.createType(
+  //       contractAccount,
+  //       contractId,
+  //       invalidArgs,
+  //       parseNearAmount("3")
+  //     );
+  //     assert(false);
+  //   } catch {
+  //     assert(true);
+  //   }
 
-    // invalid `metadata.copies`
-    invalidArgs = {
-      ...invalidArgs,
-      metadata: {
-        title: token_type_title_non_gen,
-        media: "bafkreibael4nenayqy45ijuvgcpkmyscbt3q35mtbzbeabopmugdwr5r64",
-        copies: typeCopies.toString(),
-      },
-    };
+  //   // invalid `metadata.copies`
+  //   invalidArgs = {
+  //     ...invalidArgs,
+  //     metadata: {
+  //       title: token_type_title_non_gen,
+  //       media: "bafkreibael4nenayqy45ijuvgcpkmyscbt3q35mtbzbeabopmugdwr5r64",
+  //       copies: typeCopies.toString(),
+  //     },
+  //   };
 
-    try {
-      await testUtils.createType(
-        contractAccount,
-        contractId,
-        invalidArgs,
-        parseNearAmount("3")
-      );
-      assert(false);
-    } catch {
-      assert(true);
-    }
+  //   try {
+  //     await testUtils.createType(
+  //       contractAccount,
+  //       contractId,
+  //       invalidArgs,
+  //       parseNearAmount("3")
+  //     );
+  //     assert(false);
+  //   } catch {
+  //     assert(true);
+  //   }
 
-    // invalid length of asset_filetypes arr (should be 1 or asset_count)
-    asset_filetypes = Array(9).fill("jpg");
+  //   // invalid length of asset_filetypes arr (should be 1 or asset_count)
+  //   asset_filetypes = Array(9).fill("jpg");
 
-    invalidArgs = {
-      metadata: {
-        title: token_type_title_non_gen,
-        media: "bafkreibael4nenayqy45ijuvgcpkmyscbt3q35mtbzbeabopmugdwr5r64",
-        copies: typeCopies,
-      },
-      asset_count: 10,
-      asset_filetypes,
-      royalty: {
-        [bobId]: BOB_ROYALTY,
-      },
-      json,
-    };
+  //   invalidArgs = {
+  //     metadata: {
+  //       title: token_type_title_non_gen,
+  //       media: "bafkreibael4nenayqy45ijuvgcpkmyscbt3q35mtbzbeabopmugdwr5r64",
+  //       copies: typeCopies,
+  //     },
+  //     asset_count: 10,
+  //     asset_filetypes,
+  //     royalty: {
+  //       [bobId]: BOB_ROYALTY,
+  //     },
+  //     json,
+  //   };
 
-    try {
-      await testUtils.createType(
-        contractAccount,
-        contractId,
-        invalidArgs,
-        parseNearAmount("3")
-      );
-      assert(false);
-    } catch {
-      assert(true);
-    }
+  //   try {
+  //     await testUtils.createType(
+  //       contractAccount,
+  //       contractId,
+  //       invalidArgs,
+  //       parseNearAmount("3")
+  //     );
+  //     assert(false);
+  //   } catch {
+  //     assert(true);
+  //   }
 
-    // valid `asset_distribution` array not provided for semi-generative series
-    asset_filetypes = Array(typeCopies / 2).fill("jpg");
+  //   // valid `asset_distribution` array not provided for semi-generative series
+  //   asset_filetypes = Array(typeCopies / 2).fill("jpg");
 
-    invalidArgs = {
-      metadata: {
-        title: token_type_title_semi_gen,
-        media: "bafkreibael4nenayqy45ijuvgcpkmyscbt3q35mtbzbeabopmugdwr5r64",
-        copies: typeCopies,
-      },
-      asset_count: typeCopies / 2,
-      asset_filetypes,
-      // asset_distribution not present
-      royalty: {
-        [bobId]: BOB_ROYALTY,
-      },
-      json,
-    };
+  //   invalidArgs = {
+  //     metadata: {
+  //       title: token_type_title_semi_gen,
+  //       media: "bafkreibael4nenayqy45ijuvgcpkmyscbt3q35mtbzbeabopmugdwr5r64",
+  //       copies: typeCopies,
+  //     },
+  //     asset_count: typeCopies / 2,
+  //     asset_filetypes,
+  //     // asset_distribution not present
+  //     royalty: {
+  //       [bobId]: BOB_ROYALTY,
+  //     },
+  //     json,
+  //   };
 
-    try {
-      await testUtils.createType(
-        contractAccount,
-        contractId,
-        invalidArgs,
-        parseNearAmount("3")
-      );
-      assert(false);
-    } catch {
-      assert(true);
-    }
+  //   try {
+  //     await testUtils.createType(
+  //       contractAccount,
+  //       contractId,
+  //       invalidArgs,
+  //       parseNearAmount("3")
+  //     );
+  //     assert(false);
+  //   } catch {
+  //     assert(true);
+  //   }
 
-    // empty array
-    invalidArgs = {
-      ...invalidArgs,
-      asset_distribution: [],
-    };
+  //   // empty array
+  //   invalidArgs = {
+  //     ...invalidArgs,
+  //     asset_distribution: [],
+  //   };
 
-    try {
-      await testUtils.createType(
-        contractAccount,
-        contractId,
-        invalidArgs,
-        parseNearAmount("3")
-      );
-      assert(false);
-    } catch {
-      assert(true);
-    }
+  //   try {
+  //     await testUtils.createType(
+  //       contractAccount,
+  //       contractId,
+  //       invalidArgs,
+  //       parseNearAmount("3")
+  //     );
+  //     assert(false);
+  //   } catch {
+  //     assert(true);
+  //   }
 
-    // must be of length asset_count
-    invalidArgs = {
-      ...invalidArgs,
-      asset_distribution: [[1, typeCopies]],
-    };
+  //   // must be of length asset_count
+  //   invalidArgs = {
+  //     ...invalidArgs,
+  //     asset_distribution: [[1, typeCopies]],
+  //   };
 
-    try {
-      await testUtils.createType(
-        contractAccount,
-        contractId,
-        invalidArgs,
-        parseNearAmount("3")
-      );
-      assert(false);
-    } catch {
-      assert(true);
-    }
+  //   try {
+  //     await testUtils.createType(
+  //       contractAccount,
+  //       contractId,
+  //       invalidArgs,
+  //       parseNearAmount("3")
+  //     );
+  //     assert(false);
+  //   } catch {
+  //     assert(true);
+  //   }
 
-    // second elements (`supply_remaining`) of all asset_distribution elements (sub-arrays) must add up to `metadata.copies`
-    asset_filetypes = ["jpg", "png"];
+  //   // second elements (`supply_remaining`) of all asset_distribution elements (sub-arrays) must add up to `metadata.copies`
+  //   asset_filetypes = ["jpg", "png"];
 
-    invalidArgs = {
-      ...invalidArgs,
-      asset_count: 2,
-      asset_filetypes,
-      asset_distribution: [
-        [1, typeCopies / 2],
-        [2, typeCopies / 2 + 1],
-      ],
-    };
+  //   invalidArgs = {
+  //     ...invalidArgs,
+  //     asset_count: 2,
+  //     asset_filetypes,
+  //     asset_distribution: [
+  //       [1, typeCopies / 2],
+  //       [2, typeCopies / 2 + 1],
+  //     ],
+  //   };
 
-    try {
-      await testUtils.createType(
-        contractAccount,
-        contractId,
-        invalidArgs,
-        parseNearAmount("3")
-      );
-      assert(false);
-    } catch {
-      assert(true);
-    }
+  //   try {
+  //     await testUtils.createType(
+  //       contractAccount,
+  //       contractId,
+  //       invalidArgs,
+  //       parseNearAmount("3")
+  //     );
+  //     assert(false);
+  //   } catch {
+  //     assert(true);
+  //   }
 
-    // invalid asset_id (`null`)
-    invalidArgs = {
-      ...invalidArgs,
-      asset_distribution: [
-        [null, typeCopies / 2],
-        [2, typeCopies / 2],
-      ],
-    };
+  //   // invalid asset_id (`null`)
+  //   invalidArgs = {
+  //     ...invalidArgs,
+  //     asset_distribution: [
+  //       [null, typeCopies / 2],
+  //       [2, typeCopies / 2],
+  //     ],
+  //   };
 
-    try {
-      await testUtils.createType(
-        contractAccount,
-        contractId,
-        invalidArgs,
-        parseNearAmount("3")
-      );
-      assert(false);
-    } catch {
-      assert(true);
-    }
+  //   try {
+  //     await testUtils.createType(
+  //       contractAccount,
+  //       contractId,
+  //       invalidArgs,
+  //       parseNearAmount("3")
+  //     );
+  //     assert(false);
+  //   } catch {
+  //     assert(true);
+  //   }
 
-    // `asset_distribution` array provided for non-generative series
-    asset_filetypes = ["jpg"];
+  //   // `asset_distribution` array provided for non-generative series
+  //   asset_filetypes = ["jpg"];
 
-    invalidArgs = {
-      metadata: {
-        title: token_type_title_non_gen,
-        media: "bafkreibael4nenayqy45ijuvgcpkmyscbt3q35mtbzbeabopmugdwr5r64",
-        copies: typeCopies,
-      },
-      asset_count: 1,
-      asset_filetypes,
-      asset_distribution: [[1, 10]],
-      json,
-      royalty: {
-        [bobId]: BOB_ROYALTY,
-      },
-    };
+  //   invalidArgs = {
+  //     metadata: {
+  //       title: token_type_title_non_gen,
+  //       media: "bafkreibael4nenayqy45ijuvgcpkmyscbt3q35mtbzbeabopmugdwr5r64",
+  //       copies: typeCopies,
+  //     },
+  //     asset_count: 1,
+  //     asset_filetypes,
+  //     asset_distribution: [[1, 10]],
+  //     json,
+  //     royalty: {
+  //       [bobId]: BOB_ROYALTY,
+  //     },
+  //   };
 
-    try {
-      await testUtils.createType(
-        contractAccount,
-        contractId,
-        invalidArgs,
-        parseNearAmount("3")
-      );
-      assert(false);
-    } catch {
-      assert(true);
-    }
-  });
+  //   try {
+  //     await testUtils.createType(
+  //       contractAccount,
+  //       contractId,
+  //       invalidArgs,
+  //       parseNearAmount("3")
+  //     );
+  //     assert(false);
+  //   } catch {
+  //     assert(true);
+  //   }
+  // });
 
   it("should allow owner to create a non-generative type", async function () {
     typeCopies = 10;
@@ -586,7 +586,7 @@ describe("NFT Series", function () {
       }
     );
 
-    // console.log("non-gen tokens: ", tokens);
+    console.log("non-gen tokens: ", tokens);
 
     const [TOKEN_DELIMETER, TITLE_DELIMETER, EDITION_DELIMETER] =
       await contractAccount.viewFunction(contractId, "nft_get_type_format");
