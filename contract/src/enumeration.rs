@@ -10,6 +10,10 @@ trait NonFungibleTokenEnumeration {
   /// get token objects for all NFTs on this contract, using `from_index` as starting point (if provided) and limiting count to `limit` (if provided)
   fn nft_tokens(&self, from_index: Option<U128>, limit: Option<u64>) -> Vec<VersionedToken>;
 
+  /// get all token IDs on this contract, using `from_index` as starting point (if provided) and limiting count to `limit` (if provided).
+  /// Added for the purposes of upgrading metadata for existing tokens
+  fn nft_token_ids(&self, from_index: Option<U128>, limit: Option<u64>) -> Vec<String>;
+
   /// get number of NFTs owned by a specified owner (across all series/types)
   fn nft_supply_for_owner(self, account_id: AccountId) -> U128;
 
@@ -75,6 +79,27 @@ impl NonFungibleTokenEnumeration for Contract {
           .take(limit)
           .map(|(token_id, _)| self.nft_token(token_id).unwrap())
           .collect()
+  }
+
+  /// Added for the purposes of upgrading metadata for existing tokens
+  fn nft_token_ids(&self, from_index: Option<U128>, limit: Option<u64>) -> Vec<String> {
+    // Get starting index, whether or not it was explicitly given.
+    // Defaults to 0 based on the spec:
+    // https://nomicon.io/Standards/NonFungibleToken/Enumeration.html#interface
+    let tokens = self.tokens();
+    let start_index: u128 = from_index.map(From::from).unwrap_or_default();
+    assert!(
+        (tokens.owner_by_id.len() as u128) > start_index,
+        "Out of bounds, please use a smaller from_index."
+    );
+    let limit = limit.map(|v| v as usize).unwrap_or(usize::MAX);
+    assert_ne!(limit, 0, "Cannot provide limit of 0.");
+    tokens.owner_by_id
+        .iter()
+        .skip(start_index as usize)
+        .take(limit)
+        .map(|(token_id, _)| token_id)
+        .collect()
   }
   
   fn nft_supply_for_owner(self, account_id: AccountId) -> U128 {

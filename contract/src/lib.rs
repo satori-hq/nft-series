@@ -238,62 +238,47 @@ impl Contract {
 		fn tokens(&self) -> &NonFungibleToken {
 			match &self.tokens {
 					VersionedNonFungibleToken::Current(data) => data,
-					// VersionedNonFungibleToken::V1(v1) => {
-					// 	let tokens = NonFungibleToken {
-					// 		owner_id: v1.owner_id,
-					// 		extra_storage_in_bytes_per_token: v1.extra_storage_in_bytes_per_token,
-					// 		owner_by_id: v1.owner_by_id,
-					// 		token_metadata_by_id_v1: v1.token_metadata_by_id,
-					// 		token_metadata_by_id: Some(LookupMap::new(StorageKey::TokenMetadataV2)),
-					// 		tokens_per_owner: v1.tokens_per_owner,
-					// 		approvals_by_id: v1.approvals_by_id,
-					// 		next_approval_id_by_id: v1.next_approval_id_by_id,
-					// };
-					// &tokens
-					// 	&NonFungibleToken {
-					// 		owner_id: v1.owner_id,
-					// 		extra_storage_in_bytes_per_token: v1.extra_storage_in_bytes_per_token,
-					// 		owner_by_id: v1.owner_by_id,
-					// 		token_metadata_by_id_v1: v1.token_metadata_by_id,
-					// 		token_metadata_by_id: Some(LookupMap::new(StorageKey::TokenMetadataV2)),
-					// 		tokens_per_owner: v1.tokens_per_owner,
-					// 		approvals_by_id: v1.approvals_by_id,
-					// 		next_approval_id_by_id: v1.next_approval_id_by_id,
-					// }
-				// }
 			}
 		}
 
 		fn tokens_mut(&mut self) -> &mut NonFungibleToken {
 			match &mut self.tokens {
 				VersionedNonFungibleToken::Current(data) => data,
-			// 	VersionedNonFungibleToken::V1(v1) => &mut NonFungibleToken {
-			// 		owner_id: v1.owner_id,
-			// 		extra_storage_in_bytes_per_token: v1.extra_storage_in_bytes_per_token,
-			// 		owner_by_id: v1.owner_by_id,
-			// 		token_metadata_by_id_v1: v1.token_metadata_by_id,
-			// 		token_metadata_by_id: Some(LookupMap::new(StorageKey::TokenMetadataV2)),
-			// 		tokens_per_owner: v1.tokens_per_owner,
-			// 		approvals_by_id: v1.approvals_by_id,
-			// 		next_approval_id_by_id: v1.next_approval_id_by_id,
-			// }
 			}
 		}
 
-		// fn mint_args(&self, token_type_id: u64) -> &TokenTypeMintArgs {
-		// 	// let mint_args = self.token_type_mint_args_by_id.get(&token_type_id).unwrap();
-		// 	match &self.token_type_mint_args_by_id.get(&token_type_id).unwrap() {
-		// 			VersionedTokenTypeMintArgs::Current(data) => data,
-		// 	}
-		// }
+		#[payable]
+		pub fn upgrade_token_metadata(&mut self, token_ids: Vec<TokenId>) {
+			let initial_storage_usage = env::storage_usage();
+			let owner_id = env::predecessor_account_id();
+			assert_eq!(owner_id.clone(), self.tokens().owner_id, "Unauthorized");
 
-		// fn mint_args_mut(&mut self, token_type_id: u64) -> &mut TokenTypeMintArgs {
-		// 	let mut mint_args = self.token_type_mint_args_by_id.get(&token_type_id).unwrap();
-		// 	match &mut mint_args {
-		// 			VersionedTokenTypeMintArgs::Current(data) => data,
-		// 	}
-		// }
+			token_ids
+				.iter()
+				.for_each(|token_id| {
+					log!(format!("Token id to migrate: {}", &token_id));
+					let old_metadata = TokenMetadataV1 {
+						title: None,
+						media: None,
+						description: None,
+						copies: None,
+					};
+					let v2 = TokenMetadata::from(old_metadata);
+					let val = VersionedTokenMetadata::from(VersionedTokenMetadata::Current(v2)); // new token metadata
+					self.tokens_mut().token_metadata_by_id
+            .as_mut()
+            .and_then(|by_id| {
+							let inserted = by_id.insert(&token_id, &val);
+							log!(format!("Inserted v2 metadata at key/token_id {}", token_id));
+							inserted
+						});
+					self.tokens_v1.token_metadata_by_id.as_mut().unwrap().remove(&token_id);
+					log!(format!("Removed v1 metadata at key/token_id {}", token_id));
+				});
 
+			let amt_to_refund = if env::storage_usage() > initial_storage_usage { env::storage_usage() - initial_storage_usage } else { initial_storage_usage - env::storage_usage() };
+			refund_deposit(amt_to_refund);
+	}
 
 		/// Update `base_uri` for contract
 		#[payable]
@@ -323,76 +308,4 @@ impl Contract {
 				Contract::from(old_state)
     }
 
-		// #[private]
-    // #[init(ignore_state)]
-    // pub fn migrate() -> Self {
-		// 		log!("MIGRATING!");
-    //     let old_state: Contract = env::state_read().expect("state read failed"); // was stored at StorageKey::Proposals
-		// 		// Contract::from(old_state)
-		// 		old_state
-    // }
-
-		// #[private]
-    // #[init(ignore_state)]
-    // pub fn migrate() -> Self {
-    //     let old_state: ContractV1 = env::state_read().expect("state read failed"); // was stored at StorageKey::Proposals
-
-		// 		let old_owner_id = old_state.tokens.owner_id;
-		// 		let old_extra_storage_in_bytes_per_token = old_state.tokens.extra_storage_in_bytes_per_token;
-		// 		let old_tokens_token_metadata = old_state.tokens.token_metadata_by_id.unwrap();
-		// 		let old_owner_by_id = old_state.tokens.owner_by_id;
-		// 		let old_tokens_per_owner = old_state.tokens.tokens_per_owner;
-		// 		let old_approvals_by_id = old_state.tokens.approvals_by_id;
-		// 		let old_next_approval_id_by_id = old_state.tokens.next_approval_id_by_id;
-
-		// 		let mut new_metadata_by_id = LookupMap::new(StorageKey::TokenMetadataV2);
-
-		// 		old_owner_by_id
-		// 			.iter()
-		// 			.for_each(|(token_id, _)| {
-		// 				log!(format!("Token id in migrate: {}", &token_id));
-		// 				// let key = &token_id;// token id
-		// 				let old_metadata = old_tokens_token_metadata.get(&token_id).clone().unwrap();
-		// 				let val = TokenMetadata::from(old_metadata);// new token metadata
-		// 				log!(format!("new token in migrate: {:#?}", &val));
-		// 				new_metadata_by_id.insert(&token_id, &val);
-		// 			});
-
-		// 		let mut new_tokens = NonFungibleToken::new(
-		// 			StorageKey::NonFungibleToken,
-		// 			old_owner_id.clone(),
-		// 			Some(StorageKey::TokenMetadata),
-		// 			Some(StorageKey::Enumeration),
-		// 			Some(StorageKey::Approval),
-		// 		);
-
-		// 		// new_tokens.owner_id = old_owner_id.clone();
-		// 		new_tokens.extra_storage_in_bytes_per_token = old_extra_storage_in_bytes_per_token;
-    //     new_tokens.owner_by_id = old_owner_by_id;
-    //     new_tokens.token_metadata_by_id = Some(new_metadata_by_id);
-    //     new_tokens.tokens_per_owner = old_tokens_per_owner;
-    //     new_tokens.approvals_by_id = old_approvals_by_id;
-    //     new_tokens.next_approval_id_by_id = old_next_approval_id_by_id;
-		// 		// log!(format!("old owner by id: {:#?}", old_approvals_by_id));
-				
-		// 		// let new_tokens = NonFungibleToken {
-		// 		// 		owner_id: old_owner_id.clone(),
-    //     //     extra_storage_in_bytes_per_token: old_extra_storage_in_bytes_per_token,
-    //     //     owner_by_id: old_owner_by_id,
-    //     //     token_metadata_by_id: Some(new_metadata_by_id),
-    //     //     tokens_per_owner: old_tokens_per_owner,
-    //     //     approvals_by_id: old_approvals_by_id,
-    //     //     next_approval_id_by_id: old_next_approval_id_by_id,
-		// 		// };
-
-    //     Self {
-		// 				tokens: new_tokens,
-		// 				metadata: old_state.metadata,
-		// 				contract_metadata: LazyOption::new(StorageKey::SourceMetadata, None), // CONTRACT SOURCE METADATA: https://github.com/near/NEPs/blob/master/neps/nep-0330.md
-		// 				token_type_by_title: old_state.token_type_by_title,
-		// 				token_type_by_id: old_state.token_type_by_id,
-		// 				token_type_mint_args_by_id: LookupMap::new(StorageKey::TokenTypeMintArgsById),
-    //     }
-    // }
-    
 }
