@@ -5,11 +5,12 @@ use near_sdk::json_types::{U128};
 /// "getter" methods for Contract
 trait NonFungibleTokenEnumeration {
   /// get total number of NFTs minted across all series (types) in this contract
-  fn nft_total_supply(&self) -> U128;
+  fn nft_total_supply(&self) -> U128; // WORKING
 
   /// get token objects for all NFTs on this contract, using `from_index` as starting point (if provided) and limiting count to `limit` (if provided)
   // fn nft_tokens(&self, from_index: Option<U128>, limit: Option<u64>) -> Vec<VersionedToken>;
   fn nft_tokens(&self, from_index: Option<U128>, limit: Option<u64>) -> Vec<Token>;
+  // fn nft_tokens(&self, from_index: Option<U128>, limit: Option<u64>) -> u128;
 
   /// get all token IDs on this contract, using `from_index` as starting point (if provided) and limiting count to `limit` (if provided).
   /// Added for the purposes of upgrading metadata for existing tokens
@@ -71,7 +72,7 @@ impl NonFungibleTokenEnumeration for Contract {
       let tokens = self.tokens();
       let start_index: u128 = from_index.map(From::from).unwrap_or_default();
       assert!(
-          (tokens.owner_by_id.len() as u128) > start_index,
+          (tokens.owner_by_id.len() as u128) >= start_index,
           "Out of bounds, please use a smaller from_index."
       );
       let limit = limit.map(|v| v as usize).unwrap_or(usize::MAX);
@@ -83,13 +84,23 @@ impl NonFungibleTokenEnumeration for Contract {
           .map(|(token_id, _)| self.nft_token(token_id).unwrap())
           .collect()
   }
+//   fn nft_tokens(&self, from_index: Option<U128>, limit: Option<u64>) -> u128 {
+//     // Get starting index, whether or not it was explicitly given.
+//     // Defaults to 0 based on the spec:
+//     // https://nomicon.io/Standards/NonFungibleToken/Enumeration.html#interface
+//     let tokens = self.tokens();
+//     let start_index: u128 = from_index.map(From::from).unwrap_or_default();
+//     let num_tokens = tokens.owner_by_id.len() as u128;
+//     // start_index
+//     num_tokens
+// }
 
   /// Added for the purposes of upgrading metadata for existing tokens
   fn nft_token_ids(&self, from_index: Option<U128>, limit: Option<u64>) -> Vec<String> {
     // Get starting index, whether or not it was explicitly given.
     // Defaults to 0 based on the spec:
     // https://nomicon.io/Standards/NonFungibleToken/Enumeration.html#interface
-    let tokens = self.tokens();
+    let tokens = self.tokens_v1();
     let start_index: u128 = from_index.map(From::from).unwrap_or_default();
     assert!(
         (tokens.owner_by_id.len() as u128) > start_index,

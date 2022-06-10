@@ -135,32 +135,32 @@ pub trait NonFungibleTokenReceiver {
     ) -> PromiseOrValue<bool>;
 }
 
-impl From<NonFungibleTokenV1> for NonFungibleToken {
-    fn from(v1: NonFungibleTokenV1) -> Self {
-        NonFungibleToken {
-            // fields that haven't changed are hooked up to old pointers
-            owner_id: v1.owner_id, // AccountId
-            owner_by_id: v1.owner_by_id, // TreeMap located at StorageKey::NonFungibleToken
-            extra_storage_in_bytes_per_token: v1.extra_storage_in_bytes_per_token, // u64
-            tokens_per_owner: v1.tokens_per_owner, // Option<LookupMap> located at StorageKey::Enumeration
-            approvals_by_id: v1.approvals_by_id, // Option<LookupMap> located at StorageKey::Approval
-            next_approval_id_by_id: v1.next_approval_id_by_id, // Option<LookupMap> located at [StorageKey::Approval, "n".into()].concat()
-            // NEW/UPGRADED FIELDS
-            token_metadata_by_id: Some(LookupMap::new(StorageKey::TokenMetadataV2)),  // new LookupMap to store new individual token metadata
-            // token_metadata_by_id_v1: v1.token_metadata_by_id, // Option<LookupMap> located at StorageKey::TokenMetadata; stores existing/old token metadata until it gets updated. at this time, it is removed from token_metadata_by_id_v1 and inserted into token_metadata_by_id_v1
-        }
-        // non_fungible_token.token_metadata_by_id = v1.token_metadata_by_id.unwrap().;
-        // NonFungibleToken::new(
-        //     StorageKey::NonFungibleToken, // old storage key (do we need to use a new storage key here? what happens if you call LookupMap::new(<storage_key>) at a storage_key that is already in use?)
-        //     // StorageKey::NonFungibleTokenV2, // new storage key (do we *need* to use a new storage key here?? can we reuse old one)
-        //     v1.owner_id,
-        //     Some(StorageKey::TokenMetadataV2), // have to use a new storage key here
-        //     Some(StorageKey::EnumerationV2),
-        //     Some(StorageKey::ApprovalV2),
-        //     Some(StorageKey::TokenMetadata), // does this work? this is key of original (old) TokenMetadata (token_metadata_by_id)
-        // )
-    }
-}
+// impl From<NonFungibleTokenV1> for NonFungibleToken {
+//     fn from(v1: NonFungibleTokenV1) -> Self {
+//         NonFungibleToken {
+//             // fields that haven't changed are hooked up to old pointers
+//             owner_id: v1.owner_id, // AccountId
+//             owner_by_id: v1.owner_by_id, // TreeMap located at StorageKey::NonFungibleToken
+//             extra_storage_in_bytes_per_token: v1.extra_storage_in_bytes_per_token, // u64
+//             tokens_per_owner: v1.tokens_per_owner, // Option<LookupMap> located at StorageKey::Enumeration
+//             approvals_by_id: v1.approvals_by_id, // Option<LookupMap> located at StorageKey::Approval
+//             next_approval_id_by_id: v1.next_approval_id_by_id, // Option<LookupMap> located at [StorageKey::Approval, "n".into()].concat()
+//             // NEW/UPGRADED FIELDS
+//             token_metadata_by_id: Some(LookupMap::new(StorageKey::TokenMetadata)),  // new LookupMap to store new individual token metadata
+//             // token_metadata_by_id_v1: v1.token_metadata_by_id, // Option<LookupMap> located at StorageKey::TokenMetadata; stores existing/old token metadata until it gets updated. at this time, it is removed from token_metadata_by_id_v1 and inserted into token_metadata_by_id_v1
+//         }
+//         // non_fungible_token.token_metadata_by_id = v1.token_metadata_by_id.unwrap().;
+//         // NonFungibleToken::new(
+//         //     StorageKey::NonFungibleToken, // old storage key (do we need to use a new storage key here? what happens if you call LookupMap::new(<storage_key>) at a storage_key that is already in use?)
+//         //     // StorageKey::NonFungibleTokenV2, // new storage key (do we *need* to use a new storage key here?? can we reuse old one)
+//         //     v1.owner_id,
+//         //     Some(StorageKey::TokenMetadataV2), // have to use a new storage key here
+//         //     Some(StorageKey::EnumerationV2),
+//         //     Some(StorageKey::ApprovalV2),
+//         //     Some(StorageKey::TokenMetadata), // does this work? this is key of original (old) TokenMetadata (token_metadata_by_id)
+//         // )
+//     }
+// }
 
 // impl From<VersionedNonFungibleToken> for NonFungibleToken {
 //     fn from(versioned_token: VersionedNonFungibleToken) -> Self {
@@ -276,7 +276,7 @@ pub enum VersionedNonFungibleToken {
 //     TokenPerOwnerInner { account_id_hash: CryptoHash },
 // }
 
-impl NonFungibleTokenV1 {
+impl NonFungibleTokenV1 { // TODO: remove this?
     pub fn new<Q, R, S, T>(
         owner_by_id_prefix: Q,
         owner_id: AccountId,
