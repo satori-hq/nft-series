@@ -239,11 +239,6 @@ impl NonFungibleTokenType for Contract {
 
 
 		if let Some(VersionedTokenTypeMintArgs::Current(mut token_type_mint_args)) = mint_args {
-		// if let Some(mut token_type_mint_args) = self.token_type_mint_args_by_id.get(&token_type_id) {
-
-			// let mut mint_args = versioned_mint_args_to_mint_args(token_type_mint_args);
-			// let mut mint_args = token_type_mint_args;
-
 			let mut asset_id = 1;
 			let num_filetypes = token_type_mint_args.asset_filetypes.len();
 			let mut file_type = token_type_mint_args.asset_filetypes.get(0).unwrap().clone();
@@ -308,7 +303,6 @@ impl NonFungibleTokenType for Contract {
 		self.token_type_by_id.insert(&token_type_id, &token_type);
 
 		let token = self.tokens_mut().internal_mint(token_id.clone(), receiver_id.clone(), Some(VersionedTokenMetadata::from(VersionedTokenMetadata::Current(final_metadata))));
-		// let token = self.tokens_mut().internal_mint(token_id.clone(), receiver_id.clone(), Some(final_metadata));
 
     refund_deposit(env::storage_usage() - initial_storage_usage);
 

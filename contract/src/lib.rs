@@ -43,26 +43,13 @@ pub const TITLE_DELIMETER: &str = " — ";
 /// e.g. "Title — 2/10" where 10 is max copies
 pub const EDITION_DELIMETER: &str = "/";
 
-// #[derive(BorshDeserialize, BorshSerialize)]
-// pub struct TokenTypeV1 { // OLD TOKEN TYPE
-// 	metadata: TokenMetadata,
-// 	owner_id: AccountId,
-// 	royalty: HashMap<AccountId, u32>,
-// 	tokens: UnorderedSet<TokenId>,
-// 	approved_market_id: Option<AccountId>,
-// }
-
 #[derive(BorshDeserialize, BorshSerialize)]
-pub struct TokenType { // CURRENT TOKEN TYPE
-	// metadata: TokenMetadata,
+pub struct TokenType {
 	metadata: TokenTypeMetadata,
 	owner_id: AccountId,
 	royalty: HashMap<AccountId, u32>,
 	tokens: UnorderedSet<TokenId>,
 	approved_market_id: Option<AccountId>,
-	// NEW FIELDS
-	// asset_count: Option<u64>, 
-	// json: Option<bool>, // is there a corresponding json file available on IPFS for each asset ID? (this will be added to extra on enumeration)
 }
 
 #[derive(Serialize, Deserialize)]
@@ -127,7 +114,6 @@ pub struct Contract { // CURRENT
 
 #[derive(BorshSerialize, BorshDeserialize)]
 pub enum VersionedContract { 
-    // V1(ContractV1),
     Current(Contract),
 }
 
@@ -136,17 +122,16 @@ const DATA_IMAGE_SVG_NEAR_ICON: &str = "data:image/svg+xml,%3Csvg width='89' hei
 #[derive(BorshSerialize, BorshStorageKey)]
 pub enum StorageKey {
 	// STANDARD
-	// NOTE: StorageKey comments below may not be accurate!
-    NonFungibleToken, // to deprecate
-		NonFungibleToken2, // current
-    Metadata,
-		SourceMetadata,
-    TokenMetadata, // to deprecate (tokens_v1.token_metadata_by_id stored here)
-		TokenMetadata2, // current
-    Enumeration, // to deprecate
-		Enumeration2, // current
-    Approval, // to deprecate
-		Approval2, // current
+    NonFungibleToken, // ACTIVE - self.tokens.owner_by_id located here
+		NonFungibleToken2, // INACTIVE - self.tokens_v1.owner_by_id (empty) located here
+    Metadata, // ACTIVE - self.metadata located here
+		SourceMetadata, // ACTIVE - self.contract_source_metadata located here
+    TokenMetadata, // INACTIVE - self.tokens_v1.token_metadata_by_id (empty) located here
+		TokenMetadata2, // ACTIVE - self.tokens.token_metadata_by_id located here
+    Enumeration, // ACTIVE - self.tokens.tokens_per_owner located here
+		Enumeration2, // INACTIVE - self.tokens_v1.tokens_per_owner (empty) located here
+    Approval, // ACTIVE - self.tokens.approvals_by_id located here
+		Approval2, // INACTIVE - self.tokens_v1.approvals_by_id (empty) located here
 		TokensPerOwner { account_hash: Vec<u8> },
 		TokenPerOwnerInner { account_id_hash: CryptoHash },
 	// CUSTOM
@@ -154,50 +139,6 @@ pub enum StorageKey {
     TokenTypeById,
     TokensByTypeInner { token_type_id: u64 },
 		TokenTypeMintArgsById,
-}
-
-impl From<ContractV1> for Contract {
-	fn from(v1: ContractV1) -> Self {
-		// let tokens_new = NonFungibleToken::new(
-		// 	// have to use V2 storage keys to not conflict with state at existing storage keys
-		// 	StorageKey::NonFungibleTokenV2,
-		// 	v1.tokens.owner_id.clone(),
-		// 	Some(StorageKey::TokenMetadataV2),
-		// 	Some(StorageKey::EnumerationV2),
-		// 	Some(StorageKey::ApprovalV2),
-		// 	// Some(StorageKey::TokenMetadata),
-		// );
-		let mut tokens_old = NonFungibleTokenV1::new(
-			StorageKey::NonFungibleToken2,
-			v1.tokens.owner_id.clone(),
-			Some(StorageKey::TokenMetadata2),
-			Some(StorageKey::Enumeration2),
-			Some(StorageKey::Approval2),
-		);
-		tokens_old.token_metadata_by_id = v1.tokens.token_metadata_by_id;
-
-		let tokens_new = NonFungibleToken {
-			owner_id: v1.tokens.owner_id.clone(),
-			extra_storage_in_bytes_per_token: v1.tokens.extra_storage_in_bytes_per_token,
-			owner_by_id: v1.tokens.owner_by_id,
-			tokens_per_owner: v1.tokens.tokens_per_owner,
-			approvals_by_id: v1.tokens.approvals_by_id,
-			next_approval_id_by_id: v1.tokens.next_approval_id_by_id,
-			token_metadata_by_id: Some(LookupMap::new(StorageKey::TokenMetadata2)),
-		};
-		Contract {
-			// fields that haven't changed are hooked up to old pointers
-			metadata: v1.metadata, // no changes; bring over directly (essentially just attaching this new variable to the same storage key)
-			token_type_by_title: v1.token_type_by_title, // no changes, bring over directly (essentially just attaching this new variable to the same storage key)
-			token_type_by_id: v1.token_type_by_id, // no changes, bring over directly (essentially just attaching this new variable to the same storage key)
-			tokens_v1: tokens_old, // move old `tokens` to tokens_v1` (this will be deprecated in next deploy)
-			// UPGRADED FIELDS
-			tokens: VersionedNonFungibleToken::from(VersionedNonFungibleToken::Current(tokens_new)),
-			// NEW FIELDS
-			contract_source_metadata: LazyOption::new(StorageKey::SourceMetadata, None), // doesn't exist in v1, so instantiate here
-			token_type_mint_args_by_id: LookupMap::new(StorageKey::TokenTypeMintArgsById), // doesn't exist in v1, so instantiate here
-		}
-	}
 }
 
 #[near_bindgen]
@@ -236,7 +177,6 @@ impl Contract {
 							Some(StorageKey::Approval2),
 						),
             tokens: VersionedNonFungibleToken::from(VersionedNonFungibleToken::Current(NonFungibleToken::new(
-							// have to use V2 storage keys to not conflict with state at existing storage keys
 							StorageKey::NonFungibleToken,
 							owner_id.clone(),
 							Some(StorageKey::TokenMetadata2),
@@ -263,86 +203,6 @@ impl Contract {
 			}
 		}
 
-		fn tokens_v1(&self) -> &NonFungibleTokenV1 {
-			&self.tokens_v1
-		}
-
-		fn tokens_v1_mut(&mut self) -> &mut NonFungibleTokenV1 {
-			&mut self.tokens_v1
-		}
-
-		#[payable]
-		pub fn upgrade_token_metadata(&mut self, token_ids: Vec<TokenId>) {
-			let initial_storage_usage = env::storage_usage();
-			let owner_id = env::predecessor_account_id();
-			assert_eq!(owner_id.clone(), self.tokens().owner_id, "Unauthorized");
-
-			// self.tokens_v1().owner_by_id.iter().for_each(|(token_id, _)| {
-			// 	log!(format!("Token id to migrate: {}", &token_id));
-			// 	let old_metadata = TokenMetadataV1 {
-			// 		title: None,
-			// 		media: None,
-			// 		description: None,
-			// 		copies: None,
-			// 	};
-			// 	let v2 = TokenMetadata::from(old_metadata);
-			// 	// let val = VersionedTokenMetadata::from(VersionedTokenMetadata::Current(v2)); // new token metadata
-			// 	self.tokens_mut().token_metadata_by_id
-			// 		.as_mut()
-			// 		.and_then(|by_id| {
-			// 			let inserted = by_id.insert(&token_id, &v2);
-			// 			log!(format!("Inserted v2 metadata at key/token_id {}", token_id));
-			// 			inserted
-			// 		});
-			// 	self.tokens_v1.token_metadata_by_id.as_mut().unwrap().remove(&token_id);
-			// 	log!(format!("Removed v1 metadata at key/token_id {}", token_id));
-			// });
-
-			self.tokens_mut().token_metadata_by_id
-				.as_mut()
-				.and_then(|by_id| {
-					let metadata = by_id.get(&"1:1".to_string());
-					log!(format!("v2 metadata: {:#?}", metadata));
-					Some(by_id)
-				});
-
-			self.tokens_v1_mut().token_metadata_by_id
-				.as_mut()
-				.and_then(|by_id| {
-					let metadata = by_id.get(&"1:1".to_string());
-					log!(format!("v1 metadata: {:#?}", metadata));
-					Some(by_id)
-				});
-
-			token_ids
-				.iter()
-				.for_each(|token_id| {
-					log!(format!("Token id to migrate: {}", &token_id));
-					let old_metadata = TokenMetadataV1 {
-						title: None,
-						media: None,
-						description: None,
-						copies: None,
-					};
-					let v2 = TokenMetadata::from(old_metadata);
-					let val = VersionedTokenMetadata::from(VersionedTokenMetadata::Current(v2)); // new token metadata
-					self.tokens_mut().token_metadata_by_id
-						// .unwrap()
-						// .insert(&token_id, &v2);
-            .as_mut()
-            .and_then(|by_id| {
-							let inserted = by_id.insert(&token_id, &val);
-							log!(format!("Inserted v2 metadata at key/token_id {}", token_id));
-							inserted
-						});
-					self.tokens_v1.token_metadata_by_id.as_mut().unwrap().remove(&token_id);
-					log!(format!("Removed v1 metadata at key/token_id {}", token_id));
-				});
-
-			let amt_to_refund = if env::storage_usage() > initial_storage_usage { env::storage_usage() - initial_storage_usage } else { initial_storage_usage - env::storage_usage() };
-			refund_deposit(amt_to_refund);
-	}
-
 		/// Update `base_uri` for contract
 		#[payable]
 		pub fn patch_base_uri(
@@ -363,12 +223,5 @@ impl Contract {
 			let amt_to_refund = if env::storage_usage() > initial_storage_usage { env::storage_usage() - initial_storage_usage } else { initial_storage_usage - env::storage_usage() };
 			refund_deposit(amt_to_refund);
 		}
-
-		#[private]
-    #[init(ignore_state)]
-    pub fn migrate() -> Self {
-        let old_state: ContractV1 = env::state_read().expect("state read failed"); // was stored at StorageKey::Proposals
-				Contract::from(old_state)
-    }
 
 }

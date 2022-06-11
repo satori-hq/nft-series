@@ -78,7 +78,6 @@ impl NonFungibleTokenRoyalty for Contract {
 		max_len_payout: Option<u32>,
 	) -> Option<Payout> {
 
-		// lazy minting?
 		let type_mint_args = memo.clone();
 		let previous_token = if let Some(type_mint_args) = type_mint_args {
 			log!(format!("type_mint_args: {}", type_mint_args));
@@ -89,7 +88,6 @@ impl NonFungibleTokenRoyalty for Contract {
 			self.nft_transfer(receiver_id.clone(), token_id.clone(), Some(approval_id), memo);
 			prev_token
 		};
-		// let previous_token = versioned_token_to_token(previous_token_versioned);
 
 		// compute payouts based on balance option
 		let owner_id = previous_token.owner_id;
@@ -97,7 +95,6 @@ impl NonFungibleTokenRoyalty for Contract {
 				let complete_royalty = 10_000u128;
 				let balance_piece = u128::from(balance) / complete_royalty;
 				let mut total_royalty_percentage = 0;
-				// let mut payout: Payout = HashMap::new();
 				let mut payout_struct: Payout = Payout{
 					payout: HashMap::new()
 				};
@@ -121,7 +118,6 @@ impl NonFungibleTokenRoyalty for Contract {
 				if seller_payout > 0 {
 					payout_struct.payout.insert(owner_id.clone(), U128(seller_payout));
 				}
-				// payout_struct.payout.insert(owner_id.clone(), U128((complete_royalty - total_royalty_percentage as u128) * balance_piece));
 				Some(payout_struct)
 		} else {
 				None

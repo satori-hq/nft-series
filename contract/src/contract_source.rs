@@ -53,7 +53,7 @@ impl ContractSourceMetadataTrait for Contract {
 			let owner_id = env::predecessor_account_id();
 			assert_eq!(owner_id.clone(), self.tokens().owner_id, "Unauthorized");
 
-      let mut source_metadata_option = self.contract_source_metadata.get();
+      let source_metadata_option = self.contract_source_metadata.get();
       let mut source_metadata = if source_metadata_option.is_some() {
         versioned_source_metadata_to_source_metadata(source_metadata_option.unwrap())
       } else {
@@ -63,11 +63,6 @@ impl ContractSourceMetadataTrait for Contract {
           link: None,
         }
       };
-      // .unwrap_or(ContractSourceMetadata {
-      //   version: None,
-      //   commit_hash: None,
-      //   link: None,
-      // });
       if new_source_metadata.link.is_some() {
         source_metadata.link = new_source_metadata.link;
       }
