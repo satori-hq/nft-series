@@ -96,24 +96,11 @@ pub enum VersionedTokenMetadata {
     Current(TokenMetadata),
 }
 
-/// Convert TokenMetadataV1 to TokenMetadata
-impl From<TokenMetadataV1> for TokenMetadata {
-	fn from(v1: TokenMetadataV1) -> Self {
-		TokenMetadata {
-			title: v1.title,
-			description: v1.description,
-			media: v1.media,
-			copies: v1.copies,
-			asset_id: None,
-			filetype: None,
-			extra: None,
-	    }
-	}
-}
-
-pub fn versioned_token_metadata_to_token_metadata(versioned_metadata: VersionedTokenMetadata) -> TokenMetadata {
-    match versioned_metadata {
-        VersionedTokenMetadata::Current(current) => current,
+impl From<VersionedTokenMetadata> for TokenMetadata {
+    fn from(metadata: VersionedTokenMetadata) -> Self {
+        match metadata {
+            VersionedTokenMetadata::Current(current) => current,
+        }
     }
 }
 
