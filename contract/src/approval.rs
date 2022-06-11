@@ -1,6 +1,5 @@
 use crate::*;
 
-// use crate::non_fungible_token::token::TokenId;
 use near_sdk::{assert_one_yocto, env, ext_contract, require, AccountId, Balance, Gas, Promise};
 
 

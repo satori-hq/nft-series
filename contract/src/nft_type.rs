@@ -1,7 +1,5 @@
 use crate::*;
 
-// use near_sdk::{ log };
-
 pub type AssetDetail = Vec<u64>; // E.g. [1, 10] where 1 is asset_id and 10 is supply_remaining
 pub type TokenTypeId = u64;
 pub type TokenTypeTitle = String;
@@ -40,7 +38,6 @@ pub trait NonFungibleTokenType {
 		token_type_title: TokenTypeTitle,
 		receiver_id: AccountId,
     _metadata: Option<TokenMetadata>,
-	// ) -> VersionedToken;
 ) -> Token;
 
 	/// Delete an NFT type/series that is empty (no NFTs minted yet)
@@ -200,11 +197,8 @@ impl NonFungibleTokenType for Contract {
 		token_type_title: TokenTypeTitle,
 		receiver_id: AccountId,
     _metadata: Option<TokenMetadata>,
-		// ) -> VersionedToken {
 		) -> Token {
 
-		// let token_type_mint_args_by_id = self.token_type_mint_args_by_id;
-		// let tokens = self.tokens();
 		assert_eq!(env::predecessor_account_id(), self.tokens().owner_id, "Unauthorized");
 
 		let initial_storage_usage = env::storage_usage();
@@ -233,17 +227,9 @@ impl NonFungibleTokenType for Contract {
 			extra: None,
 		};
 
-		// let mut token_type_mint_args = self.token_type_mint_args_by_id.get(&token_type_id).expect("no mint args");
 		let mint_args = self.token_type_mint_args_by_id.get(&token_type_id);
-		// let token_type_mint_args = versioned_mint_args_to_mint_args(self.token_type_mint_args_by_id.get(&token_type_id).unwrap());
-
 
 		if let Some(VersionedTokenTypeMintArgs::Current(mut token_type_mint_args)) = mint_args {
-		// if let Some(mut token_type_mint_args) = self.token_type_mint_args_by_id.get(&token_type_id) {
-
-			// let mut mint_args = versioned_mint_args_to_mint_args(token_type_mint_args);
-			// let mut mint_args = token_type_mint_args;
-
 			let mut asset_id = 1;
 			let num_filetypes = token_type_mint_args.asset_filetypes.len();
 			let mut file_type = token_type_mint_args.asset_filetypes.get(0).unwrap().clone();
@@ -308,7 +294,6 @@ impl NonFungibleTokenType for Contract {
 		self.token_type_by_id.insert(&token_type_id, &token_type);
 
 		let token = self.tokens_mut().internal_mint(token_id.clone(), receiver_id.clone(), Some(VersionedTokenMetadata::from(VersionedTokenMetadata::Current(final_metadata))));
-		// let token = self.tokens_mut().internal_mint(token_id.clone(), receiver_id.clone(), Some(final_metadata));
 
     refund_deposit(env::storage_usage() - initial_storage_usage);
 
@@ -338,7 +323,6 @@ impl NonFungibleTokenType for Contract {
 
 		let token_type_id = self.token_type_by_title.get(&token_type_title).expect("no type");
 		let token_type = self.token_type_by_id.get(&token_type_id).expect("no token");
-		// let mut token_type_mint_args = self.token_type_mint_args_by_id.get(&token_type_id).expect("no mint args");
 		// check if there are any tokens (can't delete if there are minted NFTs)
 		let num_tokens = token_type.tokens.len();
 		assert!(num_tokens < 1, "Cannot delete a type that contains tokens (found {} tokens)", num_tokens);

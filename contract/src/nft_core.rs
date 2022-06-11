@@ -93,7 +93,6 @@ pub trait NonFungibleTokenCore {
   ) -> PromiseOrValue<bool>;
 
   /// Returns the token with the given `token_id` or `null` if no such token.
-    //   fn nft_token(&self, token_id: TokenId) -> Option<VersionedToken>;
     fn nft_token(&self, token_id: TokenId) -> Option<Token>;
 }
 
@@ -135,51 +134,6 @@ pub trait NonFungibleTokenReceiver {
     ) -> PromiseOrValue<bool>;
 }
 
-// impl From<NonFungibleTokenV1> for NonFungibleToken {
-//     fn from(v1: NonFungibleTokenV1) -> Self {
-//         NonFungibleToken {
-//             // fields that haven't changed are hooked up to old pointers
-//             owner_id: v1.owner_id, // AccountId
-//             owner_by_id: v1.owner_by_id, // TreeMap located at StorageKey::NonFungibleToken
-//             extra_storage_in_bytes_per_token: v1.extra_storage_in_bytes_per_token, // u64
-//             tokens_per_owner: v1.tokens_per_owner, // Option<LookupMap> located at StorageKey::Enumeration
-//             approvals_by_id: v1.approvals_by_id, // Option<LookupMap> located at StorageKey::Approval
-//             next_approval_id_by_id: v1.next_approval_id_by_id, // Option<LookupMap> located at [StorageKey::Approval, "n".into()].concat()
-//             // NEW/UPGRADED FIELDS
-//             token_metadata_by_id: Some(LookupMap::new(StorageKey::TokenMetadata)),  // new LookupMap to store new individual token metadata
-//             // token_metadata_by_id_v1: v1.token_metadata_by_id, // Option<LookupMap> located at StorageKey::TokenMetadata; stores existing/old token metadata until it gets updated. at this time, it is removed from token_metadata_by_id_v1 and inserted into token_metadata_by_id_v1
-//         }
-//         // non_fungible_token.token_metadata_by_id = v1.token_metadata_by_id.unwrap().;
-//         // NonFungibleToken::new(
-//         //     StorageKey::NonFungibleToken, // old storage key (do we need to use a new storage key here? what happens if you call LookupMap::new(<storage_key>) at a storage_key that is already in use?)
-//         //     // StorageKey::NonFungibleTokenV2, // new storage key (do we *need* to use a new storage key here?? can we reuse old one)
-//         //     v1.owner_id,
-//         //     Some(StorageKey::TokenMetadataV2), // have to use a new storage key here
-//         //     Some(StorageKey::EnumerationV2),
-//         //     Some(StorageKey::ApprovalV2),
-//         //     Some(StorageKey::TokenMetadata), // does this work? this is key of original (old) TokenMetadata (token_metadata_by_id)
-//         // )
-//     }
-// }
-
-// impl From<VersionedNonFungibleToken> for NonFungibleToken {
-//     fn from(versioned_token: VersionedNonFungibleToken) -> Self {
-//         match versioned_token {
-//             VersionedNonFungibleToken::Current(current) => current,
-//             VersionedNonFungibleToken::V1(v1) => NonFungibleToken {
-//                 owner_id: v1.owner_id,
-//                 extra_storage_in_bytes_per_token: v1.extra_storage_in_bytes_per_token,
-//                 owner_by_id: v1.owner_by_id,
-//                 token_metadata_by_id_v1: v1.token_metadata_by_id,
-//                 token_metadata_by_id: Some(LookupMap::new(StorageKey::TokenMetadataV2)),
-//                 tokens_per_owner: v1.tokens_per_owner,
-//                 approvals_by_id: v1.approvals_by_id,
-//                 next_approval_id_by_id: v1.next_approval_id_by_id,
-//             }
-//         }
-//     }
-// }
-
 /// NEW Implementation of the non-fungible token standard.
 /// Allows to include NEP-171 compatible token to any contract.
 /// There are next traits that any contract may implement:
@@ -201,8 +155,7 @@ pub struct NonFungibleTokenV1 { // OLD
     pub owner_by_id: TreeMap<TokenId, AccountId>,
 
     // required by metadata extension
-    // OLD TOKEN METADATA
-    pub token_metadata_by_id: Option<LookupMap<TokenId, TokenMetadataV1>>,
+    pub token_metadata_by_id: Option<LookupMap<TokenId, TokenMetadataV1>>, // OLD TOKEN METADATA
 
     // required by enumeration extension
     pub tokens_per_owner: Option<LookupMap<AccountId, UnorderedSet<TokenId>>>,
@@ -224,11 +177,7 @@ pub struct NonFungibleToken { // CURRENT
     pub owner_by_id: TreeMap<TokenId, AccountId>,
 
     // required by metadata extension
-    // OLD TOKEN METADATA
-    // pub token_metadata_by_id_v1: Option<LookupMap<TokenId, TokenMetadataV1>>,
-    // CURRENT TOKEN METADATA
-    pub token_metadata_by_id: Option<LookupMap<TokenId, VersionedTokenMetadata>>,
-    // pub token_metadata_by_id: Option<LookupMap<TokenId, TokenMetadata>>,
+    pub token_metadata_by_id: Option<LookupMap<TokenId, VersionedTokenMetadata>>, // CURRENT TOKEN METADATA
 
     // required by enumeration extension
     pub tokens_per_owner: Option<LookupMap<AccountId, UnorderedSet<TokenId>>>,
@@ -240,41 +189,8 @@ pub struct NonFungibleToken { // CURRENT
 
 #[derive(BorshSerialize, BorshDeserialize)]
 pub enum VersionedNonFungibleToken {
-    // V1(NonFungibleTokenV1),
     Current(NonFungibleToken),
 }
-
-// pub fn versioned_tokens_to_tokens(versioned_tokens: &VersionedNonFungibleToken) -> NonFungibleToken {
-//     match versioned_tokens {
-//         VersionedNonFungibleToken::Current(current) => current,
-//         // VersionedNonFungibleToken::Current(current) => NonFungibleToken {
-//         //     owner_id: current.owner_id,
-//         //     extra_storage_in_bytes_per_token: current.extra_storage_in_bytes_per_token,
-//         //     owner_by_id: current.owner_by_id,
-//         //     token_metadata_by_id_v1: current.token_metadata_by_id_v1,
-//         //     token_metadata_by_id: current.token_metadata_by_id,
-//         //     tokens_per_owner: current.tokens_per_owner,
-//         //     approvals_by_id: current.approvals_by_id,
-//         //     next_approval_id_by_id: current.next_approval_id_by_id,
-//         // },
-//         VersionedNonFungibleToken::V1(v1) => NonFungibleToken {
-//             owner_id: v1.owner_id,
-//             extra_storage_in_bytes_per_token: v1.extra_storage_in_bytes_per_token,
-//             owner_by_id: v1.owner_by_id,
-//             token_metadata_by_id_v1: v1.token_metadata_by_id,
-//             token_metadata_by_id: Some(LookupMap::new(StorageKey::TokenMetadataV2)),
-//             tokens_per_owner: v1.tokens_per_owner,
-//             approvals_by_id: v1.approvals_by_id,
-//             next_approval_id_by_id: v1.next_approval_id_by_id,
-//         }
-//     }
-// }
-
-// #[derive(BorshStorageKey, BorshSerialize)]
-// pub enum StorageKey {
-//     TokensPerOwner { account_hash: Vec<u8> },
-//     TokenPerOwnerInner { account_id_hash: CryptoHash },
-// }
 
 impl NonFungibleTokenV1 {
     pub fn new<Q, R, S, T>(
@@ -313,22 +229,19 @@ impl NonFungibleTokenV1 {
 }
 
 impl NonFungibleToken {
-    pub fn new<Q, R, S, T>( // TODO: remove U after upgrade
+    pub fn new<Q, R, S, T>(
         owner_by_id_prefix: Q,
         owner_id: AccountId,
         token_metadata_prefix: Option<R>,
         enumeration_prefix: Option<S>,
         approval_prefix: Option<T>,
-        // token_metadata_prefix_v1: Option<U>, // TODO: remove after upgrade (prefix for old metadata - only for purposes of contract upgrade, should never really be calling this "new" method with this argument present)
         ) -> Self
         where
             Q: IntoStorageKey,
             R: IntoStorageKey,
             S: IntoStorageKey,
             T: IntoStorageKey,
-            // U: IntoStorageKey, // TODO: remove after upgrade
         {
-        // log!("Should not be calling this function with token_metadata_prefix_v1 arg present"); // TODO: remove after upgrade
         let (approvals_by_id, next_approval_id_by_id) = if let Some(prefix) = approval_prefix {
             let prefix: Vec<u8> = prefix.into_storage_key();
             (
@@ -344,7 +257,6 @@ impl NonFungibleToken {
             extra_storage_in_bytes_per_token: 0,
             owner_by_id: TreeMap::new(owner_by_id_prefix),
             token_metadata_by_id: token_metadata_prefix.map(LookupMap::new),
-            // token_metadata_by_id_v1: token_metadata_prefix_v1.map(LookupMap::new),
             tokens_per_owner: enumeration_prefix.map(LookupMap::new),
             approvals_by_id,
             next_approval_id_by_id,
@@ -453,11 +365,6 @@ impl NonFungibleToken {
 							account_hash: env::sha256(to.as_bytes()),
 					})
 			});
-			// let receiver_token_set = if let Some(receiver_token_set) = tokens_per_owner.get(&to) {
-			// 	receiver_token_set
-			// } else {
-			// 	UnorderedSet::new()
-			// };
 			receiver_tokens.insert(token_id);
 			tokens_per_owner.insert(to, &receiver_tokens);
 		}
@@ -526,40 +433,12 @@ impl NonFungibleToken {
         (owner_id, approved_account_ids)
     }
 
-    /// Mint a new token. Not part of official standard, but needed in most situations.
-    /// Consuming contract expected to wrap this with an `nft_mint` function.
-    ///
-    /// Requirements:
-    /// * Caller must be the `owner_id` set during contract initialization.
-    /// * Caller of the method must attach a deposit of 1 yoctoⓃ for security purposes.
-    /// * If contract is using Metadata extension (by having provided `metadata_prefix` during
-    ///   contract initialization), `token_metadata` must be given.
-    /// * token_id must be unique
-    ///
-    /// Returns the newly minted token
-    // #[deprecated(since = "4.0.0", note = "mint is deprecated, please use internal_mint instead.")]
-    // pub fn mint(
-    //     &mut self,
-    //     token_id: TokenId,
-    //     token_owner_id: AccountId,
-    //     // token_metadata: Option<VersionedTokenMetadata>,
-    //     token_metadata: Option<TokenMetadata>,
-    // // ) -> VersionedToken {
-    //     ) -> Token {
-    //     assert_eq!(env::predecessor_account_id(), self.owner_id, "Unauthorized");
-
-    //     self.internal_mint(token_id, token_owner_id, token_metadata)
-    // }
-
-    /// NEW Mint a new token without checking:
-    /// * Whether the caller id is equal to the `owner_id`
+    /// Mint a new token without checking whether the caller id is equal to the `owner_id`
     pub fn internal_mint(
         &mut self,
         token_id: TokenId,
         token_owner_id: AccountId,
         token_metadata: Option<VersionedTokenMetadata>,
-        // token_metadata: Option<TokenMetadata>,
-    // ) -> VersionedToken {
     ) -> Token {
         let initial_storage_usage = env::storage_usage();
         if self.token_metadata_by_id.is_some() && token_metadata.is_none() {
@@ -601,10 +480,8 @@ impl NonFungibleToken {
         refund_deposit(env::storage_usage() - initial_storage_usage);
 
         let token = Token { token_id, owner_id, metadata: Some(versioned_token_metadata_to_token_metadata(token_metadata.unwrap())), approved_account_ids };
-        // convert to VersionedToken and return
-        // VersionedToken::from(VersionedToken::Current(token))
-        token
 
+        token
     }
 }
 
@@ -695,22 +572,14 @@ impl NonFungibleTokenCore for Contract {
 			);
 		}
 
-        let token_metadata_versioned = tokens.token_metadata_by_id.as_ref().unwrap().get(&token_id); // PREVIOUS CODE
-        // let token = if self.tokens.token_metadata_by_id.as_ref().is_some() {
-        //     self.tokens.token_metadata_by_id.as_ref().unwrap().get(&token_id)
-        // } else {
-        //     // let v1 = self.tokens.token_metadata_by_id_v1.as_ref().unwrap().get(&token_id);
-        //     Some(TokenMetadata::from(self.tokens.token_metadata_by_id_v1.as_ref().unwrap().get(&token_id).unwrap()))
-        // };
-        let unwrapped = token_metadata_versioned.unwrap();
-        // let token_metadata = TokenMetadata::from(unwrapped);
-        let token_metadata = versioned_token_metadata_to_token_metadata(unwrapped);
+        let token_metadata_versioned = tokens.token_metadata_by_id.as_ref().unwrap().get(&token_id).unwrap();
+        let token_metadata = versioned_token_metadata_to_token_metadata(token_metadata_versioned);
         let asset_id = &token_metadata.asset_id;
         let filetype = &token_metadata.filetype;
         let extra = &token_metadata.extra;
         let media = final_metadata.clone().media.unwrap();
         if asset_id.is_some() && filetype.is_some() {
-            // older NFTs (pre-generative upgrade c. 5/31/22) won't have asset_id or file_type
+            // older NFTs (pre-generative upgrade c. 6/15/22) won't have asset_id or file_type
             // media cid for this series + asset token ID + filetype maps to a media asset on IPFS
             final_metadata.media = Some(format!("{}/{}.{}", media.clone(), asset_id.clone().unwrap(), filetype.clone().unwrap()));
         }
@@ -727,7 +596,6 @@ impl NonFungibleTokenCore for Contract {
         let token = Token {
             token_id,
             owner_id,
-            // metadata: Some(VersionedTokenMetadata::from(VersionedTokenMetadata::Current(final_metadata))),
             metadata: Some(final_metadata),
             approved_account_ids,
         };
