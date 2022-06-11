@@ -78,6 +78,20 @@ pub struct TokenMetadataV1 { // OLD TOKEN METADATA
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, BorshDeserialize, BorshSerialize)]
 #[serde(crate = "near_sdk::serde")]
+pub struct TokenMetadataV2 { // CURRENT TOKEN METADATA
+    pub title: Option<String>, // ex. "Arch Nemesis: Mail Carrier" or "Parcel #5055"
+    pub description: Option<String>, // free-form description
+    pub media: Option<String>, // URL to associated media, preferably to decentralized, content-addressed storage
+    pub copies: Option<u64>, // number of copies of this set of metadata in existence when token was minted.
+    // NEW FIELDS
+    pub asset_id: Option<String>,
+    pub filetype: Option<String>,
+    pub extra: Option<String>, // anything extra the NFT wants to store on-chain. Can be stringified JSON.
+    // TODO: add `updatedAt`
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, BorshDeserialize, BorshSerialize)]
+#[serde(crate = "near_sdk::serde")]
 pub struct TokenMetadata { // CURRENT TOKEN METADATA
     pub title: Option<String>, // ex. "Arch Nemesis: Mail Carrier" or "Parcel #5055"
     pub description: Option<String>, // free-form description
@@ -87,35 +101,64 @@ pub struct TokenMetadata { // CURRENT TOKEN METADATA
     pub asset_id: Option<String>,
     pub filetype: Option<String>,
     pub extra: Option<String>, // anything extra the NFT wants to store on-chain. Can be stringified JSON.
-    // TODO: add `updatedAt`? other fields?
+    pub updated_at: Option<u64>, // Block timestamp for update
 }
 
 #[derive(Debug, Clone, PartialEq, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 #[serde(crate = "near_sdk::serde")]
 pub enum VersionedTokenMetadata {
+    V2(TokenMetadataV2),
     Current(TokenMetadata),
 }
 
-/// Convert TokenMetadataV1 to TokenMetadata
-impl From<TokenMetadataV1> for TokenMetadata {
-	fn from(v1: TokenMetadataV1) -> Self {
-		TokenMetadata {
-			title: v1.title,
-			description: v1.description,
-			media: v1.media,
-			copies: v1.copies,
-			asset_id: None,
-			filetype: None,
-			extra: None,
-	    }
-	}
-}
+// /// Convert TokenMetadataV1 to TokenMetadata
+// impl From<TokenMetadataV1> for TokenMetadata {
+// 	fn from(v1: TokenMetadataV1) -> Self {
+// 		TokenMetadata {
+// 			title: v1.title,
+// 			description: v1.description,
+// 			media: v1.media,
+// 			copies: v1.copies,
+// 			asset_id: None,
+// 			filetype: None,
+// 			extra: None,
+// 	    }
+// 	}
+// }
 
-pub fn versioned_token_metadata_to_token_metadata(versioned_metadata: VersionedTokenMetadata) -> TokenMetadata {
-    match versioned_metadata {
-        VersionedTokenMetadata::Current(current) => current,
+impl From<VersionedTokenMetadata> for TokenMetadata {
+    fn from(metadata: VersionedTokenMetadata) -> Self {
+        match metadata {
+            VersionedTokenMetadata::Current(current) => current,
+            VersionedTokenMetadata::V2(v2) => TokenMetadata {
+                title: v2.title,
+                description: v2.description,
+                media: v2.media,
+                copies: v2.copies,
+                asset_id: v2.asset_id,
+                filetype: v2.filetype,
+                extra: v2.extra,
+                updated_at: None,
+            }
+        }
     }
 }
+
+// pub fn versioned_token_metadata_to_token_metadata(versioned_metadata: VersionedTokenMetadata) -> TokenMetadata {
+//     match versioned_metadata {
+//         VersionedTokenMetadata::Current(current) => current,
+//         VersionedTokenMetadata::V2(v2) => TokenMetadata {
+//             title: v2.title,
+// 			description: v2.description,
+// 			media: v2.media,
+// 			copies: v2.copies,
+// 			asset_id: v2.asset_id,
+// 			filetype: v2.filetype,
+// 			extra: v2.extra,
+//             updated_at: None,
+//         }
+//     }
+// }
 
 /// Offers details on the contract-level metadata.
 pub trait NonFungibleTokenMetadataProvider {

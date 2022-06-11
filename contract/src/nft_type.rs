@@ -231,6 +231,7 @@ impl NonFungibleTokenType for Contract {
 			asset_id: None,
 			filetype: None,
 			extra: None,
+			updated_at: Some(env::block_timestamp()),
 		};
 
 		// let mut token_type_mint_args = self.token_type_mint_args_by_id.get(&token_type_id).expect("no mint args");

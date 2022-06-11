@@ -288,6 +288,7 @@ impl NonFungibleToken {
                 asset_id: Some(String::from("1")),
                 filetype: Some(String::from("jpg")),
                 extra: Some(String::from("1.json")),
+                updated_at: Some(1654988970282),
             };
             token_metadata_by_id.insert(
                 &tmp_token_id,
@@ -489,7 +490,7 @@ impl NonFungibleToken {
         // Return any extra attached deposit not used for storage
         refund_deposit(env::storage_usage() - initial_storage_usage);
 
-        let token = Token { token_id, owner_id, metadata: Some(versioned_token_metadata_to_token_metadata(token_metadata.unwrap())), approved_account_ids };
+        let token = Token { token_id, owner_id, metadata: Some(TokenMetadata::from(token_metadata.unwrap())), approved_account_ids };
 
         token
     }
@@ -567,6 +568,7 @@ impl NonFungibleTokenCore for Contract {
             asset_id: None,
             filetype: None,
             extra: None,
+            updated_at: Some(env::block_timestamp()),
         };
 		// let copies = final_metadata.copies;
 		if let Some(copies) = final_metadata.copies {
@@ -583,7 +585,7 @@ impl NonFungibleTokenCore for Contract {
 		}
 
         let token_metadata_versioned = tokens.token_metadata_by_id.as_ref().unwrap().get(&token_id).unwrap();
-        let token_metadata = versioned_token_metadata_to_token_metadata(token_metadata_versioned);
+        let token_metadata = TokenMetadata::from(token_metadata_versioned);
         let asset_id = &token_metadata.asset_id;
         let filetype = &token_metadata.filetype;
         let extra = &token_metadata.extra;
