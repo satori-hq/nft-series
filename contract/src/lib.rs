@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::collections::{LazyOption, LookupMap, UnorderedMap, UnorderedSet};
+use near_sdk::collections::{LazyOption, LookupMap, UnorderedMap, UnorderedSet, TreeMap};
 use near_sdk::json_types::{U64, U128};
 use near_sdk::{
-	log, env, near_bindgen, serde_json::json, AccountId, BorshStorageKey, PanicOnDefault, CryptoHash,
+	log, env, near_bindgen, serde_json::json, AccountId, BorshStorageKey, IntoStorageKey, PanicOnDefault, CryptoHash,
 };
 use near_sdk::serde::{Deserialize, Serialize};
 
@@ -54,7 +54,8 @@ pub const EDITION_DELIMETER: &str = "/";
 
 #[derive(BorshDeserialize, BorshSerialize)]
 pub struct TokenType { // CURRENT TOKEN TYPE
-	metadata: TokenMetadata,
+	// metadata: TokenMetadata,
+	metadata: TokenTypeMetadata,
 	owner_id: AccountId,
 	royalty: HashMap<AccountId, u32>,
 	tokens: UnorderedSet<TokenId>,
@@ -67,7 +68,7 @@ pub struct TokenType { // CURRENT TOKEN TYPE
 #[derive(Serialize, Deserialize)]
 #[serde(crate = "near_sdk::serde")]
 pub struct TokenTypeJson {
-	metadata: TokenMetadata,
+	metadata: TokenTypeMetadata,
 	owner_id: AccountId,
 	royalty: HashMap<AccountId, u32>,
 }

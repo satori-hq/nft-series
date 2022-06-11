@@ -276,7 +276,7 @@ pub enum VersionedNonFungibleToken {
 //     TokenPerOwnerInner { account_id_hash: CryptoHash },
 // }
 
-impl NonFungibleTokenV1 { // TODO: remove this?
+impl NonFungibleTokenV1 {
     pub fn new<Q, R, S, T>(
         owner_by_id_prefix: Q,
         owner_id: AccountId,
@@ -300,7 +300,7 @@ impl NonFungibleTokenV1 { // TODO: remove this?
             (None, None)
         };
 
-        let mut this = Self {
+        Self {
             owner_id,
             extra_storage_in_bytes_per_token: 0,
             owner_by_id: TreeMap::new(owner_by_id_prefix),
@@ -308,177 +308,7 @@ impl NonFungibleTokenV1 { // TODO: remove this?
             tokens_per_owner: enumeration_prefix.map(LookupMap::new),
             approvals_by_id,
             next_approval_id_by_id,
-        };
-        this.measure_min_token_storage_cost();
-        this
-    }
-
-    // TODO: does this seem reasonable?
-    fn measure_min_token_storage_cost(&mut self) {
-        let initial_storage_usage = env::storage_usage();
-        let tmp_token_id = "a".repeat(64); // TODO: what's a reasonable max TokenId length?
-        let tmp_owner_id = AccountId::new_unchecked("a".repeat(64));
-
-        // 1. set some dummy data
-        self.owner_by_id.insert(&tmp_token_id, &tmp_owner_id);
-        if let Some(token_metadata_by_id) = &mut self.token_metadata_by_id {
-            token_metadata_by_id.insert(
-                &tmp_token_id,
-                &TokenMetadataV1 {
-                    title: Some("a".repeat(64)),
-                    description: Some("a".repeat(64)),
-                    media: Some("a".repeat(64)),
-                    copies: Some(1),
-                },
-            );
         }
-        if let Some(tokens_per_owner) = &mut self.tokens_per_owner {
-            let u = &mut UnorderedSet::new(StorageKey::TokensPerOwner {
-                account_hash: env::sha256(tmp_owner_id.as_bytes()),
-            });
-            u.insert(&tmp_token_id);
-            tokens_per_owner.insert(&tmp_owner_id, u);
-        }
-        if let Some(approvals_by_id) = &mut self.approvals_by_id {
-            let mut approvals = HashMap::new();
-            approvals.insert(tmp_owner_id.clone(), 1u64);
-            approvals_by_id.insert(&tmp_token_id, &approvals);
-        }
-        if let Some(next_approval_id_by_id) = &mut self.next_approval_id_by_id {
-            next_approval_id_by_id.insert(&tmp_token_id, &1u64);
-        }
-        let u = UnorderedSet::new(
-            StorageKey::TokenPerOwnerInner { account_id_hash: hash_account_id(&tmp_owner_id) }
-                .try_to_vec()
-                .unwrap(),
-        );
-        if let Some(tokens_per_owner) = &mut self.tokens_per_owner {
-            tokens_per_owner.insert(&tmp_owner_id, &u);
-        }
-
-        // 2. see how much space it took
-        self.extra_storage_in_bytes_per_token = env::storage_usage() - initial_storage_usage;
-
-        // 3. roll it all back
-        if let Some(next_approval_id_by_id) = &mut self.next_approval_id_by_id {
-            next_approval_id_by_id.remove(&tmp_token_id);
-        }
-        if let Some(approvals_by_id) = &mut self.approvals_by_id {
-            approvals_by_id.remove(&tmp_token_id);
-        }
-        if let Some(tokens_per_owner) = &mut self.tokens_per_owner {
-            tokens_per_owner.remove(&tmp_owner_id);
-        }
-        if let Some(token_metadata_by_id) = &mut self.token_metadata_by_id {
-            token_metadata_by_id.remove(&tmp_token_id);
-        }
-        if let Some(tokens_per_owner) = &mut self.tokens_per_owner {
-            tokens_per_owner.remove(&tmp_owner_id);
-        }
-        self.owner_by_id.remove(&tmp_token_id);
-    }
-
-	/// Transfer token_id from `from` to `to`
-	///
-	/// Do not perform any safety checks or do any logging
-	pub fn internal_transfer_unguarded(
-		&mut self,
-		#[allow(clippy::ptr_arg)] token_id: &TokenId,
-		from: &AccountId,
-		to: &AccountId,
-	) {
-			// update owner
-			self.owner_by_id.insert(token_id, to);
-
-			// if using Enumeration standard, update old & new owner's token lists
-			if let Some(tokens_per_owner) = &mut self.tokens_per_owner {
-			// owner_tokens should always exist, so call `unwrap` without guard
-			let mut owner_tokens = tokens_per_owner.get(from).unwrap_or_else(|| {
-					env::panic_str("Unable to access tokens per owner in unguarded call.")
-			});
-			owner_tokens.remove(token_id);
-			if owner_tokens.is_empty() {
-					tokens_per_owner.remove(from);
-			} else {
-					tokens_per_owner.insert(from, &owner_tokens);
-			}
-
-			let mut receiver_tokens = tokens_per_owner.get(to).unwrap_or_else(|| {
-					UnorderedSet::new(StorageKey::TokensPerOwner {
-							account_hash: env::sha256(to.as_bytes()),
-					})
-			});
-			// let receiver_token_set = if let Some(receiver_token_set) = tokens_per_owner.get(&to) {
-			// 	receiver_token_set
-			// } else {
-			// 	UnorderedSet::new()
-			// };
-			receiver_tokens.insert(token_id);
-			tokens_per_owner.insert(to, &receiver_tokens);
-		}
-	}
-
-    /// Transfer from current owner to receiver_id, checking that sender is allowed to transfer.
-    /// Clear approvals, if approval extension being used.
-    /// Return previous owner and approvals.
-    pub fn internal_transfer(
-        &mut self,
-        sender_id: &AccountId,
-        receiver_id: &AccountId,
-        #[allow(clippy::ptr_arg)] token_id: &TokenId,
-        approval_id: Option<u64>,
-        memo: Option<String>,
-    ) -> (AccountId, Option<HashMap<AccountId, u64>>) {
-        let owner_id = self.owner_by_id.get(token_id).unwrap_or_else(|| env::panic_str("Token not found"));
-
-        // clear approvals, if using Approval Management extension
-        // this will be rolled back by a panic if sending fails
-        let approved_account_ids = self.approvals_by_id.as_mut().and_then(|by_id| by_id.remove(token_id));
-
-        // check if authorized
-        let sender_id = if sender_id != &owner_id {
-            // if approval extension is NOT being used, or if token has no approved accounts
-            let app_acc_ids = approved_account_ids.as_ref().unwrap_or_else(|| env::panic_str("Unauthorized"));
-
-            // Approval extension is being used; get approval_id for sender.
-            let actual_approval_id = app_acc_ids.get(sender_id);
-
-            // Panic if sender not approved at all
-            if actual_approval_id.is_none() {
-                env::panic_str("Sender not approved");
-            }
-
-            // If approval_id included, check that it matches
-            require!(
-                approval_id.is_none() || actual_approval_id == approval_id.as_ref(),
-                format!(
-                        "The actual approval_id {:?} is different from the given approval_id {:?}",
-                        actual_approval_id, approval_id
-                )
-            );
-            Some(sender_id)
-        } else {
-            None
-        };
-
-        require!(&owner_id != receiver_id, "Current and next owner must differ");
-
-        self.internal_transfer_unguarded(token_id, &owner_id, receiver_id);
-
-        // NonFungibleToken::emit_transfer(&owner_id, receiver_id, token_id, sender_id, memo);
-        env::log_str(format!("{}{}", EVENT_JSON, json!({
-            "standard": "nep171",
-            "version": "1.0.0",
-            "event": "nft_transfer",
-            "data": [
-                {
-                    "old_owner_id": owner_id, "new_owner_id": receiver_id, "token_ids": [token_id]
-                }
-            ]
-        })).as_ref());
-
-        // return previous owner & approvals
-        (owner_id, approved_account_ids)
     }
 }
 
@@ -840,9 +670,18 @@ impl NonFungibleTokenCore for Contract {
 		let token_type_id = token_id_iter.next().unwrap().parse().unwrap();
 		// make edition titles nice for showing in wallet
         let token_type = self.token_type_by_id.get(&token_type_id).unwrap();
-		let mut final_metadata = token_type.metadata;
-		let copies = final_metadata.copies;
-		if let Some(copies) = copies {
+        // let mut final_metadata = token_type.metadata;
+		let mut final_metadata = TokenMetadata {
+            title: token_type.metadata.title,
+            description: token_type.metadata.description,
+            media: token_type.metadata.media,
+            copies: token_type.metadata.copies,
+            asset_id: None,
+            filetype: None,
+            extra: None,
+        };
+		// let copies = final_metadata.copies;
+		if let Some(copies) = final_metadata.copies {
 			final_metadata.title = Some(
 				format!(
 					"{}{}{}{}{}",

@@ -40,12 +40,11 @@ pub trait ContractSourceMetadataTrait {
 impl ContractSourceMetadataTrait for Contract {
     fn contract_source_metadata(&self) -> Option<ContractSourceMetadata> {
         let source_metadata = self.contract_source_metadata.get();
-        Some(versioned_source_metadata_to_source_metadata(source_metadata.unwrap()))
-        // if source_metadata.is_some() {
-        //   Some(source_metadata.unwrap())
-        // } else {
-        //   None
-        // }
+        if source_metadata.is_some() {
+          Some(versioned_source_metadata_to_source_metadata(source_metadata.unwrap()))
+        } else {
+          None
+        }
     }
 
     #[payable]

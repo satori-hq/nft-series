@@ -65,6 +65,16 @@ pub struct NFTContractMetadata {
     pub reference_hash: Option<Base64VecU8>, // Base64-encoded sha256 hash of JSON from reference field. Required if `reference` is included.
 }
 
+/// Metadata for a type/series.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, BorshDeserialize, BorshSerialize)]
+#[serde(crate = "near_sdk::serde")]
+pub struct TokenTypeMetadata {
+    pub title: Option<String>, // ex. "Arch Nemesis: Mail Carrier" or "Parcel #5055"
+    pub description: Option<String>, // free-form description
+    pub media: Option<String>, // URL to associated media, preferably to decentralized, content-addressed storage
+    pub copies: Option<u64>, // number of copies of this set of metadata in existence when token was minted.
+}
+
 /// Metadata on the individual token level.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, BorshDeserialize, BorshSerialize)]
 #[serde(crate = "near_sdk::serde")]

@@ -12,7 +12,7 @@ pub trait NonFungibleTokenType {
   /// Create a new NFT type (aka series)
   fn nft_create_type(
       &mut self,
-      metadata: TokenMetadata,
+      metadata: TokenTypeMetadata,
       royalty: HashMap<AccountId, u32>,
 			asset_count: u64,
       asset_filetypes: Vec<String>,
@@ -55,7 +55,7 @@ impl NonFungibleTokenType for Contract {
   #[payable]
   fn nft_create_type(
         &mut self,
-        metadata: TokenMetadata,
+        metadata: TokenTypeMetadata,
         royalty: HashMap<AccountId, u32>,
 				asset_count: u64,
 				asset_filetypes: Vec<String>,

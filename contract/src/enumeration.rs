@@ -9,15 +9,15 @@ trait NonFungibleTokenEnumeration {
 
   /// get token objects for all NFTs on this contract, using `from_index` as starting point (if provided) and limiting count to `limit` (if provided)
   // fn nft_tokens(&self, from_index: Option<U128>, limit: Option<u64>) -> Vec<VersionedToken>;
-  fn nft_tokens(&self, from_index: Option<U128>, limit: Option<u64>) -> Vec<Token>;
+  fn nft_tokens(&self, from_index: Option<U128>, limit: Option<u64>) -> Vec<Token>; // WORKING, BUT NOT RETURNING ANY TOKENS
   // fn nft_tokens(&self, from_index: Option<U128>, limit: Option<u64>) -> u128;
 
   /// get all token IDs on this contract, using `from_index` as starting point (if provided) and limiting count to `limit` (if provided).
   /// Added for the purposes of upgrading metadata for existing tokens
-  fn nft_token_ids(&self, from_index: Option<U128>, limit: Option<u64>) -> Vec<String>;
+  fn nft_token_ids(&self, from_index: Option<U128>, limit: Option<u64>) -> Vec<String>; // WORKING
 
   /// get number of NFTs owned by a specified owner (across all series/types)
-  fn nft_supply_for_owner(self, account_id: AccountId) -> U128;
+  fn nft_supply_for_owner(self, account_id: AccountId) -> U128; // WORKING
 
   /// get token objects for all NFTs owned by a specified owner (across all series/types)
   fn nft_tokens_for_owner(
@@ -26,26 +26,26 @@ trait NonFungibleTokenEnumeration {
     from_index: Option<U128>,
     limit: Option<u64>,
   // ) -> Vec<VersionedToken>;
-  ) -> Vec<Token>;
+  ) -> Vec<Token>; // WORKING
 
   /// get info on a specific type/series, by title
-  fn nft_get_type(&self, token_type_title: TokenTypeTitle) -> TokenTypeJson;
+  fn nft_get_type(&self, token_type_title: TokenTypeTitle) -> TokenTypeJson; // WORKING
 
-  /// get type format as (TOKEN_DELIMETER, TITLE_DELIMETER, EDITION_DELIMETER)
-  fn nft_get_type_format(&self) -> (char, &'static str, &'static str);
+  /// get type format as [TOKEN_DELIMETER, TITLE_DELIMETER, EDITION_DELIMETER]
+  fn nft_get_type_format(&self) -> (char, &'static str, &'static str); // WORKING
 
   /// get info on all types/series contained within this contract
   fn nft_get_types(
     &self,
     from_index: Option<U128>,
     limit: Option<u64>
-  ) -> Vec<TokenTypeJson>;
+  ) -> Vec<TokenTypeJson>; // WORKING
 
   /// get number of NFTs minted (existing!) for a specified type/series
   fn nft_supply_for_type(
     &self,
     token_type_title: TokenTypeTitle,
-  ) -> U64;
+  ) -> U64; // WORKING
 
   /// get token objects for all NFTs of a specified type/series
   fn nft_tokens_by_type(
@@ -53,7 +53,7 @@ trait NonFungibleTokenEnumeration {
     token_type_title: TokenTypeTitle,
     from_index: Option<U128>,
     limit: Option<u64>
-  ) -> Vec<Token>;
+  ) -> Vec<Token>; // SHOULD WORK ONCE TOKENS ARE AVAILABLE
 
 }
 
@@ -100,10 +100,10 @@ impl NonFungibleTokenEnumeration for Contract {
     // Get starting index, whether or not it was explicitly given.
     // Defaults to 0 based on the spec:
     // https://nomicon.io/Standards/NonFungibleToken/Enumeration.html#interface
-    let tokens = self.tokens_v1();
+    let tokens = self.tokens();
     let start_index: u128 = from_index.map(From::from).unwrap_or_default();
     assert!(
-        (tokens.owner_by_id.len() as u128) > start_index,
+        (tokens.owner_by_id.len() as u128) >= start_index,
         "Out of bounds, please use a smaller from_index."
     );
     let limit = limit.map(|v| v as usize).unwrap_or(usize::MAX);
@@ -159,6 +159,7 @@ impl NonFungibleTokenEnumeration for Contract {
   /// CUSTOM VIEWS for typed tokens
   
   fn nft_get_type(&self, token_type_title: TokenTypeTitle) -> TokenTypeJson {
+    log!(format!("token_type_title: {}", token_type_title));
     let token_type = self.token_type_by_id.get(&self.token_type_by_title.get(&token_type_title).expect("no type")).expect("no type");
     TokenTypeJson{
       metadata: token_type.metadata,
