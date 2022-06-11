@@ -99,12 +99,12 @@ pub struct TokenMetadata { // CURRENT TOKEN METADATA
     // TODO: add `updatedAt`? other fields?
 }
 
-// #[derive(Debug, Clone, PartialEq, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
-// #[serde(crate = "near_sdk::serde")]
-// pub enum VersionedTokenMetadata {
-//     // V1(TokenMetadataV1),
-//     Current(TokenMetadata),
-// }
+#[derive(Debug, Clone, PartialEq, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
+#[serde(crate = "near_sdk::serde")]
+pub enum VersionedTokenMetadata {
+    // V1(TokenMetadataV1),
+    Current(TokenMetadata),
+}
 
 /// Convert TokenMetadataV1 to TokenMetadata
 impl From<TokenMetadataV1> for TokenMetadata {
@@ -151,20 +151,20 @@ impl From<TokenMetadataV1> for TokenMetadata {
 // 	}
 // }
 
-// pub fn versioned_token_metadata_to_token_metadata(versioned_metadata: VersionedTokenMetadata) -> TokenMetadata {
-//     match versioned_metadata {
-//         VersionedTokenMetadata::Current(current) => current,
-//         // VersionedTokenMetadata::V1(v1) => TokenMetadata {
-//         //     title: v1.title,
-//         //     description: v1.description,
-//         //     media: v1.media,
-//         //     copies: v1.copies,
-//         //     asset_id: None,
-//         //     filetype: None,
-//         //     extra: None,
-//         // }
-//     }
-// }
+pub fn versioned_token_metadata_to_token_metadata(versioned_metadata: VersionedTokenMetadata) -> TokenMetadata {
+    match versioned_metadata {
+        VersionedTokenMetadata::Current(current) => current,
+        // VersionedTokenMetadata::V1(v1) => TokenMetadata {
+        //     title: v1.title,
+        //     description: v1.description,
+        //     media: v1.media,
+        //     copies: v1.copies,
+        //     asset_id: None,
+        //     filetype: None,
+        //     extra: None,
+        // }
+    }
+}
 
 // impl From<UpgradableTokenMetadata> for TokenMetadata {
 // 	fn from(metadata: UpgradableTokenMetadata) -> Self {

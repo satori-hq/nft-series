@@ -227,8 +227,8 @@ pub struct NonFungibleToken { // CURRENT
     // OLD TOKEN METADATA
     // pub token_metadata_by_id_v1: Option<LookupMap<TokenId, TokenMetadataV1>>,
     // CURRENT TOKEN METADATA
-    // pub token_metadata_by_id: Option<LookupMap<TokenId, VersionedTokenMetadata>>,
-    pub token_metadata_by_id: Option<LookupMap<TokenId, TokenMetadata>>,
+    pub token_metadata_by_id: Option<LookupMap<TokenId, VersionedTokenMetadata>>,
+    // pub token_metadata_by_id: Option<LookupMap<TokenId, TokenMetadata>>,
 
     // required by enumeration extension
     pub tokens_per_owner: Option<LookupMap<AccountId, UnorderedSet<TokenId>>>,
@@ -373,8 +373,8 @@ impl NonFungibleToken {
             };
             token_metadata_by_id.insert(
                 &tmp_token_id,
-                // &VersionedTokenMetadata::from(VersionedTokenMetadata::Current(token)),
-                &token,
+                &VersionedTokenMetadata::from(VersionedTokenMetadata::Current(token)),
+                // &token,
             );
         }
         if let Some(tokens_per_owner) = &mut self.tokens_per_owner {
@@ -537,19 +537,19 @@ impl NonFungibleToken {
     /// * token_id must be unique
     ///
     /// Returns the newly minted token
-    #[deprecated(since = "4.0.0", note = "mint is deprecated, please use internal_mint instead.")]
-    pub fn mint(
-        &mut self,
-        token_id: TokenId,
-        token_owner_id: AccountId,
-        // token_metadata: Option<VersionedTokenMetadata>,
-        token_metadata: Option<TokenMetadata>,
-    // ) -> VersionedToken {
-        ) -> Token {
-        assert_eq!(env::predecessor_account_id(), self.owner_id, "Unauthorized");
+    // #[deprecated(since = "4.0.0", note = "mint is deprecated, please use internal_mint instead.")]
+    // pub fn mint(
+    //     &mut self,
+    //     token_id: TokenId,
+    //     token_owner_id: AccountId,
+    //     // token_metadata: Option<VersionedTokenMetadata>,
+    //     token_metadata: Option<TokenMetadata>,
+    // // ) -> VersionedToken {
+    //     ) -> Token {
+    //     assert_eq!(env::predecessor_account_id(), self.owner_id, "Unauthorized");
 
-        self.internal_mint(token_id, token_owner_id, token_metadata)
-    }
+    //     self.internal_mint(token_id, token_owner_id, token_metadata)
+    // }
 
     /// NEW Mint a new token without checking:
     /// * Whether the caller id is equal to the `owner_id`
@@ -557,8 +557,8 @@ impl NonFungibleToken {
         &mut self,
         token_id: TokenId,
         token_owner_id: AccountId,
-        // token_metadata: Option<VersionedTokenMetadata>,
-        token_metadata: Option<TokenMetadata>,
+        token_metadata: Option<VersionedTokenMetadata>,
+        // token_metadata: Option<TokenMetadata>,
     // ) -> VersionedToken {
     ) -> Token {
         let initial_storage_usage = env::storage_usage();
@@ -579,6 +579,7 @@ impl NonFungibleToken {
         // provided to call.
         self.token_metadata_by_id
             .as_mut()
+            // .and_then(|by_id| by_id.insert(&token_id, &VersionedTokenMetadata::from(VersionedTokenMetadata::Current(token_metadata.unwrap()))));
             .and_then(|by_id| by_id.insert(&token_id, token_metadata.as_ref().unwrap()));
 
         // Enumeration extension: Record tokens_per_owner for use with enumeration view methods.
@@ -599,7 +600,7 @@ impl NonFungibleToken {
         // Return any extra attached deposit not used for storage
         refund_deposit(env::storage_usage() - initial_storage_usage);
 
-        let token = Token { token_id, owner_id, metadata: token_metadata, approved_account_ids };
+        let token = Token { token_id, owner_id, metadata: Some(versioned_token_metadata_to_token_metadata(token_metadata.unwrap())), approved_account_ids };
         // convert to VersionedToken and return
         // VersionedToken::from(VersionedToken::Current(token))
         token
@@ -701,9 +702,9 @@ impl NonFungibleTokenCore for Contract {
         //     // let v1 = self.tokens.token_metadata_by_id_v1.as_ref().unwrap().get(&token_id);
         //     Some(TokenMetadata::from(self.tokens.token_metadata_by_id_v1.as_ref().unwrap().get(&token_id).unwrap()))
         // };
-        let token_metadata = token_metadata_versioned.unwrap();
+        let unwrapped = token_metadata_versioned.unwrap();
         // let token_metadata = TokenMetadata::from(unwrapped);
-        // let token_metadata = versioned_token_metadata_to_token_metadata(unwrapped);
+        let token_metadata = versioned_token_metadata_to_token_metadata(unwrapped);
         let asset_id = &token_metadata.asset_id;
         let filetype = &token_metadata.filetype;
         let extra = &token_metadata.extra;

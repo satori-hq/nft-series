@@ -307,8 +307,8 @@ impl NonFungibleTokenType for Contract {
 		token_type.tokens.insert(&token_id);
 		self.token_type_by_id.insert(&token_type_id, &token_type);
 
-		// let token = self.tokens_mut().internal_mint(token_id.clone(), receiver_id.clone(), Some(VersionedTokenMetadata::from(VersionedTokenMetadata::Current(final_metadata))));
-		let token = self.tokens_mut().internal_mint(token_id.clone(), receiver_id.clone(), Some(final_metadata));
+		let token = self.tokens_mut().internal_mint(token_id.clone(), receiver_id.clone(), Some(VersionedTokenMetadata::from(VersionedTokenMetadata::Current(final_metadata))));
+		// let token = self.tokens_mut().internal_mint(token_id.clone(), receiver_id.clone(), Some(final_metadata));
 
     refund_deposit(env::storage_usage() - initial_storage_usage);
 

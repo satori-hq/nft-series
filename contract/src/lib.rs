@@ -325,13 +325,13 @@ impl Contract {
 						copies: None,
 					};
 					let v2 = TokenMetadata::from(old_metadata);
-					// let val = VersionedTokenMetadata::from(VersionedTokenMetadata::Current(v2)); // new token metadata
+					let val = VersionedTokenMetadata::from(VersionedTokenMetadata::Current(v2)); // new token metadata
 					self.tokens_mut().token_metadata_by_id
 						// .unwrap()
 						// .insert(&token_id, &v2);
             .as_mut()
             .and_then(|by_id| {
-							let inserted = by_id.insert(&token_id, &v2);
+							let inserted = by_id.insert(&token_id, &val);
 							log!(format!("Inserted v2 metadata at key/token_id {}", token_id));
 							inserted
 						});
