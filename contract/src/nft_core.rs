@@ -288,7 +288,7 @@ impl NonFungibleToken {
                 asset_id: Some(String::from("1")),
                 filetype: Some(String::from("jpg")),
                 extra: Some(String::from("1.json")),
-                updated_at: Some(1654988970282),
+                updated_at: Some(env::block_timestamp()),
             };
             token_metadata_by_id.insert(
                 &tmp_token_id,
@@ -568,7 +568,7 @@ impl NonFungibleTokenCore for Contract {
             asset_id: None,
             filetype: None,
             extra: None,
-            updated_at: Some(env::block_timestamp()),
+            updated_at: None,
         };
 		// let copies = final_metadata.copies;
 		if let Some(copies) = final_metadata.copies {
@@ -589,6 +589,7 @@ impl NonFungibleTokenCore for Contract {
         let asset_id = &token_metadata.asset_id;
         let filetype = &token_metadata.filetype;
         let extra = &token_metadata.extra;
+        final_metadata.updated_at = token_metadata.updated_at;
         let media = final_metadata.clone().media.unwrap();
         if asset_id.is_some() && filetype.is_some() {
             // older NFTs (pre-generative upgrade c. 5/31/22) won't have asset_id or file_type
