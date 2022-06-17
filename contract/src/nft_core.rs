@@ -572,7 +572,7 @@ impl NonFungibleTokenCore for Contract {
 			);
 		}
 
-        let token_metadata_versioned = tokens.token_metadata_by_id.as_ref().unwrap().get(&token_id).unwrap();
+        let token_metadata_versioned = tokens.token_metadata_by_id.as_ref().unwrap().get(&token_id).unwrap(); // TODO: handle None
         let token_metadata = versioned_token_metadata_to_token_metadata(token_metadata_versioned);
         let asset_id = &token_metadata.asset_id;
         let filetype = &token_metadata.filetype;
