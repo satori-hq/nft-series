@@ -25,7 +25,7 @@ pub trait NonFungibleTokenType {
 	);
 
   /// Update any metadata or royalty fields of an existing NFT type/series EXCEPT `copies`
-  fn nft_patch_type(
+  fn nft_update_type(
       &mut self,
       token_type_title: TokenTypeTitle,
       metadata: Option<TokenMetadata>,
@@ -158,7 +158,7 @@ impl NonFungibleTokenType for Contract {
 	}
 
 	#[payable]
-  fn nft_patch_type(
+  fn nft_update_type(
         &mut self,
 				token_type_title: TokenTypeTitle,
 				metadata: Option<TokenMetadata>,
@@ -177,9 +177,10 @@ impl NonFungibleTokenType for Contract {
 			}
 			// don't validate that description is_some, as description can be none
 			token_type.metadata.description = metadata.description;
-			if metadata.media.is_some() {
-				token_type.metadata.media = metadata.media
-			}
+			// don't allow media updates for now
+			// if metadata.media.is_some() {
+			// 	token_type.metadata.media = metadata.media
+			// }
 			// don't allow to patch copies (this must go through `nft_cap_copies`)
 		}
 		if let Some(royalty) = royalty {

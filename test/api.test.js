@@ -886,7 +886,7 @@ describe("NFT Series", function () {
     }
   });
 
-  it("should allow the owner to update any type metadata fields EXCEPT for `copies`", async function () {
+  it("should allow the owner to update any type metadata fields EXCEPT for `media` and `copies`", async function () {
     const updatedTitle = token_type_title_semi_gen + " - updated";
     const updatedDescription = "Updated description";
     const updatedMedia =
@@ -904,7 +904,7 @@ describe("NFT Series", function () {
 
     await contractAccount.functionCall({
       contractId,
-      methodName: "nft_patch_type",
+      methodName: "nft_update_type",
       args: {
         token_type_title: token_type_title_semi_gen,
         metadata: {
@@ -932,7 +932,7 @@ describe("NFT Series", function () {
       token_type_updated.metadata.description,
       updatedDescription
     );
-    assert.strictEqual(token_type_updated.metadata.media, updatedMedia);
+    assert.strictEqual(token_type_original.metadata.media, updatedMedia);
     assert.strictEqual(
       token_type_updated.metadata.copies,
       token_type_original.metadata.copies
@@ -941,7 +941,7 @@ describe("NFT Series", function () {
     // revert to original values for future tests
     await contractAccount.functionCall({
       contractId,
-      methodName: "nft_patch_type",
+      methodName: "nft_update_type",
       args: {
         token_type_title: token_type_title_semi_gen,
         metadata: {
@@ -989,7 +989,7 @@ describe("NFT Series", function () {
 
     await contractAccount.functionCall({
       contractId,
-      methodName: "nft_patch_type",
+      methodName: "nft_update_type",
       args: {
         token_type_title: token_type_title_semi_gen,
         royalty: updatedRoyalties,
@@ -1011,7 +1011,7 @@ describe("NFT Series", function () {
     // revert to original value for future tests
     await contractAccount.functionCall({
       contractId,
-      methodName: "nft_patch_type",
+      methodName: "nft_update_type",
       args: {
         token_type_title: token_type_title_semi_gen,
         royalty: token_type_original.royalty,
