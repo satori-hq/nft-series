@@ -932,7 +932,10 @@ describe("NFT Series", function () {
       token_type_updated.metadata.description,
       updatedDescription
     );
-    assert.strictEqual(token_type_original.metadata.media, updatedMedia);
+    assert.strictEqual(
+      token_type_updated.metadata.media,
+      token_type_original.metadata.media
+    );
     assert.strictEqual(
       token_type_updated.metadata.copies,
       token_type_original.metadata.copies
