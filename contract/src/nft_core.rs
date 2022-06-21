@@ -572,8 +572,15 @@ impl NonFungibleTokenCore for Contract {
 			);
 		}
 
-        let token_metadata_versioned = tokens.token_metadata_by_id.as_ref().unwrap().get(&token_id).unwrap(); // TODO: handle None
-        let token_metadata = versioned_token_metadata_to_token_metadata(token_metadata_versioned);
+        let token_metadata_versioned_current = tokens.token_metadata_by_id.as_ref().unwrap().get(&token_id);
+        let token_metadata_versioned = if token_metadata_versioned_current.is_some() {
+            // try current token metadata first
+            token_metadata_versioned_current
+        } else {
+            // we're in the middle of migrating; take from tokens_v1
+            Some(VersionedTokenMetadata::from(VersionedTokenMetadata::Current(TokenMetadata::from(self.tokens_v1().token_metadata_by_id.as_ref().unwrap().get(&token_id).unwrap()))))
+        };
+        let token_metadata = versioned_token_metadata_to_token_metadata(token_metadata_versioned.unwrap());
         let asset_id = &token_metadata.asset_id;
         let filetype = &token_metadata.filetype;
         let extra = &token_metadata.extra;
