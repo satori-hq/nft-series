@@ -1,6 +1,7 @@
 use crate::*;
 
-pub type AssetDetail = Vec<u64>; // E.g. [1, 10] where 1 is asset_id and 10 is supply_remaining
+// pub type AssetDetail = Vec<u64>; // E.g. [1, 10] where 1 is asset_id and 10 is supply_remaining
+pub type AssetDetail = Vec<String>; // E.g. ["1", "10"] where 1 is asset_id and 10 is supply_remaining, or ["cat", "10"] where "cat" is asset_id and 10 is supply_remaining
 pub type TokenTypeId = u64;
 pub type TokenTypeTitle = String;
 
@@ -106,7 +107,7 @@ impl NonFungibleTokenType for Contract {
 			for distr_detail in asset_distribution {
 				let asset_id = distr_detail.get(0);
 				assert!(asset_id.is_some(), "Asset ID must be provided");
-				let supply_remaining = distr_detail.get(1).unwrap().clone();
+				let supply_remaining: u64 = distr_detail.get(1).unwrap().clone().parse().unwrap();
 				total_supply = total_supply + supply_remaining;
 			}
 			assert!(total_supply == metadata.copies.unwrap(), "Total supply must equal copies. Received {} total supply & {} copies", total_supply, metadata.copies.unwrap());
@@ -231,7 +232,7 @@ impl NonFungibleTokenType for Contract {
 		let mint_args = self.token_type_mint_args_by_id.get(&token_type_id);
 
 		if let Some(VersionedTokenTypeMintArgs::Current(mut token_type_mint_args)) = mint_args {
-			let mut asset_id = 1;
+			let mut asset_id = "1".to_string();
 			let num_filetypes = token_type_mint_args.asset_filetypes.len();
 			let mut file_type = token_type_mint_args.asset_filetypes.get(0).unwrap().clone();
 
@@ -241,11 +242,11 @@ impl NonFungibleTokenType for Contract {
 
 			if token_type_mint_args.asset_count == Some(copies) {
 				// fully-generative case (unique media per NFT; could be 1/1 or 1/10,000)
-				asset_id = num_tokens + 1;
+				asset_id = (num_tokens + 1).to_string();
 				if num_filetypes > 1 {
 					// fully-generative case with specified filetype for each asset
 					// get filetype at index of this asset
-					file_type = token_type_mint_args.asset_filetypes.get((asset_id - 1) as usize).unwrap().clone();
+					file_type = token_type_mint_args.asset_filetypes.get(num_tokens as usize).unwrap().clone();
 				}
 			} else {
 				if token_type_mint_args.asset_count == Some(1) {
@@ -258,7 +259,7 @@ impl NonFungibleTokenType for Contract {
 					let idx = random_num % token_type_mint_args.asset_distribution.len() as u128;
 					let mut asset = token_type_mint_args.asset_distribution.get(idx as usize).unwrap().clone();
 					asset_id = asset.get(0).unwrap().clone();
-					let mut supply_remaining = asset.get(1).unwrap().clone();
+					let mut supply_remaining: u64 = asset.get(1).unwrap().clone().parse().unwrap();
 
 					if token_type_mint_args.asset_filetypes.len() > 1 {
 						file_type = token_type_mint_args.asset_filetypes.get(idx as usize).unwrap().to_string();
@@ -269,7 +270,7 @@ impl NonFungibleTokenType for Contract {
 						// decrement supply
 						supply_remaining = supply_remaining - 1;
 						asset.remove(1);
-						asset.insert(1, supply_remaining);
+						asset.insert(1, supply_remaining.to_string());
 						token_type_mint_args.asset_distribution.remove(idx as usize);
 						token_type_mint_args.asset_distribution.insert(idx as usize, asset);
 					} else {
