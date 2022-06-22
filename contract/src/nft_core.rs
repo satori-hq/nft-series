@@ -93,7 +93,6 @@ pub trait NonFungibleTokenCore {
   ) -> PromiseOrValue<bool>;
 
   /// Returns the token with the given `token_id` or `null` if no such token.
-    //   fn nft_token(&self, token_id: TokenId) -> Option<VersionedToken>;
     fn nft_token(&self, token_id: TokenId) -> Option<Token>;
 }
 
@@ -156,8 +155,7 @@ pub struct NonFungibleTokenV1 { // OLD
     pub owner_by_id: TreeMap<TokenId, AccountId>,
 
     // required by metadata extension
-    // OLD TOKEN METADATA
-    pub token_metadata_by_id: Option<LookupMap<TokenId, TokenMetadataV1>>,
+    pub token_metadata_by_id: Option<LookupMap<TokenId, TokenMetadataV1>>, // OLD TOKEN METADATA
 
     // required by enumeration extension
     pub tokens_per_owner: Option<LookupMap<AccountId, UnorderedSet<TokenId>>>,
@@ -179,11 +177,7 @@ pub struct NonFungibleToken { // CURRENT
     pub owner_by_id: TreeMap<TokenId, AccountId>,
 
     // required by metadata extension
-    // OLD TOKEN METADATA
-    // pub token_metadata_by_id_v1: Option<LookupMap<TokenId, TokenMetadataV1>>,
-    // CURRENT TOKEN METADATA
-    pub token_metadata_by_id: Option<LookupMap<TokenId, VersionedTokenMetadata>>,
-    // pub token_metadata_by_id: Option<LookupMap<TokenId, TokenMetadata>>,
+    pub token_metadata_by_id: Option<LookupMap<TokenId, VersionedTokenMetadata>>, // CURRENT TOKEN METADATA
 
     // required by enumeration extension
     pub tokens_per_owner: Option<LookupMap<AccountId, UnorderedSet<TokenId>>>,
@@ -371,11 +365,6 @@ impl NonFungibleToken {
 							account_hash: env::sha256(to.as_bytes()),
 					})
 			});
-			// let receiver_token_set = if let Some(receiver_token_set) = tokens_per_owner.get(&to) {
-			// 	receiver_token_set
-			// } else {
-			// 	UnorderedSet::new()
-			// };
 			receiver_tokens.insert(token_id);
 			tokens_per_owner.insert(to, &receiver_tokens);
 		}
@@ -589,7 +578,7 @@ impl NonFungibleTokenCore for Contract {
         let extra = &token_metadata.extra;
         let media = final_metadata.clone().media.unwrap();
         if asset_id.is_some() && filetype.is_some() {
-            // older NFTs (pre-generative upgrade c. 5/31/22) won't have asset_id or file_type
+            // older NFTs (pre-generative upgrade c. 6/15/22) won't have asset_id or file_type
             // media cid for this series + asset token ID + filetype maps to a media asset on IPFS
             final_metadata.media = Some(format!("{}/{}.{}", media.clone(), asset_id.clone().unwrap(), filetype.clone().unwrap()));
         }

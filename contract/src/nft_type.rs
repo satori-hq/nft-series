@@ -1,8 +1,7 @@
 use crate::*;
 
-// use near_sdk::{ log };
-
-pub type AssetDetail = Vec<u64>; // E.g. [1, 10] where 1 is asset_id and 10 is supply_remaining
+// pub type AssetDetail = Vec<u64>; // E.g. [1, 10] where 1 is asset_id and 10 is supply_remaining
+pub type AssetDetail = Vec<String>; // E.g. ["1", "10"] where 1 is asset_id and 10 is supply_remaining, or ["cat", "10"] where "cat" is asset_id and 10 is supply_remaining
 pub type TokenTypeId = u64;
 pub type TokenTypeTitle = String;
 
@@ -27,7 +26,7 @@ pub trait NonFungibleTokenType {
 	);
 
   /// Update any metadata or royalty fields of an existing NFT type/series EXCEPT `copies`
-  fn nft_patch_type(
+  fn nft_update_type(
       &mut self,
       token_type_title: TokenTypeTitle,
       metadata: Option<TokenMetadata>,
@@ -40,7 +39,6 @@ pub trait NonFungibleTokenType {
 		token_type_title: TokenTypeTitle,
 		receiver_id: AccountId,
     _metadata: Option<TokenMetadata>,
-	// ) -> VersionedToken;
 ) -> Token;
 
 	/// Delete an NFT type/series that is empty (no NFTs minted yet)
@@ -109,7 +107,7 @@ impl NonFungibleTokenType for Contract {
 			for distr_detail in asset_distribution {
 				let asset_id = distr_detail.get(0);
 				assert!(asset_id.is_some(), "Asset ID must be provided");
-				let supply_remaining = distr_detail.get(1).unwrap().clone();
+				let supply_remaining: u64 = distr_detail.get(1).unwrap().clone().parse().unwrap();
 				total_supply = total_supply + supply_remaining;
 			}
 			assert!(total_supply == metadata.copies.unwrap(), "Total supply must equal copies. Received {} total supply & {} copies", total_supply, metadata.copies.unwrap());
@@ -161,7 +159,7 @@ impl NonFungibleTokenType for Contract {
 	}
 
 	#[payable]
-  fn nft_patch_type(
+  fn nft_update_type(
         &mut self,
 				token_type_title: TokenTypeTitle,
 				metadata: Option<TokenMetadata>,
@@ -180,9 +178,10 @@ impl NonFungibleTokenType for Contract {
 			}
 			// don't validate that description is_some, as description can be none
 			token_type.metadata.description = metadata.description;
-			if metadata.media.is_some() {
-				token_type.metadata.media = metadata.media
-			}
+			// don't allow media updates for now
+			// if metadata.media.is_some() {
+			// 	token_type.metadata.media = metadata.media
+			// }
 			// don't allow to patch copies (this must go through `nft_cap_copies`)
 		}
 		if let Some(royalty) = royalty {
@@ -200,11 +199,8 @@ impl NonFungibleTokenType for Contract {
 		token_type_title: TokenTypeTitle,
 		receiver_id: AccountId,
     _metadata: Option<TokenMetadata>,
-		// ) -> VersionedToken {
 		) -> Token {
 
-		// let token_type_mint_args_by_id = self.token_type_mint_args_by_id;
-		// let tokens = self.tokens();
 		assert_eq!(env::predecessor_account_id(), self.tokens().owner_id, "Unauthorized");
 
 		let initial_storage_usage = env::storage_usage();
@@ -233,13 +229,10 @@ impl NonFungibleTokenType for Contract {
 			extra: None,
 		};
 
-		// let mut token_type_mint_args = self.token_type_mint_args_by_id.get(&token_type_id).expect("no mint args");
 		let mint_args = self.token_type_mint_args_by_id.get(&token_type_id);
-		// let token_type_mint_args = versioned_mint_args_to_mint_args(self.token_type_mint_args_by_id.get(&token_type_id).unwrap());
-
 
 		if let Some(VersionedTokenTypeMintArgs::Current(mut token_type_mint_args)) = mint_args {
-			let mut asset_id = 1;
+			let mut asset_id = "1".to_string();
 			let num_filetypes = token_type_mint_args.asset_filetypes.len();
 			let mut file_type = token_type_mint_args.asset_filetypes.get(0).unwrap().clone();
 
@@ -249,11 +242,11 @@ impl NonFungibleTokenType for Contract {
 
 			if token_type_mint_args.asset_count == Some(copies) {
 				// fully-generative case (unique media per NFT; could be 1/1 or 1/10,000)
-				asset_id = num_tokens + 1;
+				asset_id = (num_tokens + 1).to_string();
 				if num_filetypes > 1 {
 					// fully-generative case with specified filetype for each asset
 					// get filetype at index of this asset
-					file_type = token_type_mint_args.asset_filetypes.get((asset_id - 1) as usize).unwrap().clone();
+					file_type = token_type_mint_args.asset_filetypes.get(num_tokens as usize).unwrap().clone();
 				}
 			} else {
 				if token_type_mint_args.asset_count == Some(1) {
@@ -266,7 +259,7 @@ impl NonFungibleTokenType for Contract {
 					let idx = random_num % token_type_mint_args.asset_distribution.len() as u128;
 					let mut asset = token_type_mint_args.asset_distribution.get(idx as usize).unwrap().clone();
 					asset_id = asset.get(0).unwrap().clone();
-					let mut supply_remaining = asset.get(1).unwrap().clone();
+					let mut supply_remaining: u64 = asset.get(1).unwrap().clone().parse().unwrap();
 
 					if token_type_mint_args.asset_filetypes.len() > 1 {
 						file_type = token_type_mint_args.asset_filetypes.get(idx as usize).unwrap().to_string();
@@ -277,7 +270,7 @@ impl NonFungibleTokenType for Contract {
 						// decrement supply
 						supply_remaining = supply_remaining - 1;
 						asset.remove(1);
-						asset.insert(1, supply_remaining);
+						asset.insert(1, supply_remaining.to_string());
 						token_type_mint_args.asset_distribution.remove(idx as usize);
 						token_type_mint_args.asset_distribution.insert(idx as usize, asset);
 					} else {
@@ -332,7 +325,6 @@ impl NonFungibleTokenType for Contract {
 
 		let token_type_id = self.token_type_by_title.get(&token_type_title).expect("no type");
 		let token_type = self.token_type_by_id.get(&token_type_id).expect("no token");
-		// let mut token_type_mint_args = self.token_type_mint_args_by_id.get(&token_type_id).expect("no mint args");
 		// check if there are any tokens (can't delete if there are minted NFTs)
 		let num_tokens = token_type.tokens.len();
 		assert!(num_tokens < 1, "Cannot delete a type that contains tokens (found {} tokens)", num_tokens);

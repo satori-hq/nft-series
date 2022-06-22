@@ -117,29 +117,29 @@ impl NonFungibleTokenEnumeration for Contract {
         account_id: AccountId,
         from_index: Option<U128>,
         limit: Option<u64>,
-  ) -> Vec<Token> {
-      let tokens_per_owner = self.tokens().tokens_per_owner.as_ref().expect(
-          "Could not find tokens_per_owner when calling a method on the enumeration standard.",
-      );
-      let token_set = if let Some(token_set) = tokens_per_owner.get(&account_id) {
-          token_set
-      } else {
-          return vec![];
-      };
-      let limit = limit.map(|v| v as usize).unwrap_or(usize::MAX);
-      assert_ne!(limit, 0, "Cannot provide limit of 0.");
-      let start_index: u128 = from_index.map(From::from).unwrap_or_default();
-      assert!(
-          token_set.len() as u128 > start_index,
-          "Out of bounds, please use a smaller from_index."
-      );
-      token_set
-          .iter()
-          .skip(start_index as usize)
-          .take(limit)
-          .map(|token_id| self.nft_token(token_id).unwrap())
-          .collect()
-  }
+    ) -> Vec<Token> {
+        let tokens_per_owner = self.tokens().tokens_per_owner.as_ref().expect(
+            "Could not find tokens_per_owner when calling a method on the enumeration standard.",
+        );
+        let token_set = if let Some(token_set) = tokens_per_owner.get(&account_id) {
+            token_set
+        } else {
+            return vec![];
+        };
+        let limit = limit.map(|v| v as usize).unwrap_or(usize::MAX);
+        assert_ne!(limit, 0, "Cannot provide limit of 0.");
+        let start_index: u128 = from_index.map(From::from).unwrap_or_default();
+        assert!(
+            token_set.len() as u128 > start_index,
+            "Out of bounds, please use a smaller from_index."
+        );
+        token_set
+            .iter()
+            .skip(start_index as usize)
+            .take(limit)
+            .map(|token_id| self.nft_token(token_id).unwrap())
+            .collect()
+    }
   
   /// CUSTOM VIEWS for typed tokens
   

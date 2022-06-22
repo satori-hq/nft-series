@@ -425,7 +425,7 @@ describe("NFT Series", function () {
     // must be of length asset_count
     invalidArgs = {
       ...invalidArgs,
-      asset_distribution: [[1, typeCopies]],
+      asset_distribution: [["1", typeCopies.toString()]],
     };
 
     try {
@@ -448,8 +448,8 @@ describe("NFT Series", function () {
       asset_count: 2,
       asset_filetypes,
       asset_distribution: [
-        [1, typeCopies / 2],
-        [2, typeCopies / 2 + 1],
+        ["cat", (typeCopies / 2).toString()],
+        ["dog", (typeCopies / 2 + 1).toString()],
       ],
     };
 
@@ -469,8 +469,8 @@ describe("NFT Series", function () {
     invalidArgs = {
       ...invalidArgs,
       asset_distribution: [
-        [null, typeCopies / 2],
-        [2, typeCopies / 2],
+        [null, (typeCopies / 2).toString()],
+        ["2", (typeCopies / 2).toString()],
       ],
     };
 
@@ -497,7 +497,7 @@ describe("NFT Series", function () {
       },
       asset_count: 1,
       asset_filetypes,
-      asset_distribution: [[1, 10]],
+      asset_distribution: [["1", "10"]],
       json,
       royalty: {
         [bobId]: BOB_ROYALTY,
@@ -621,8 +621,8 @@ describe("NFT Series", function () {
     asset_filetypes = ["png", "mp4"];
     // asset_distribution = [[1, 2]].concat(Array(typeCopies - 2).fill([1, 1])); // USE THIS TO TEST LARGE ARRAYS
     asset_distribution = [
-      [1, 4],
-      [2, 2],
+      ["cat", "4"],
+      ["dog", "2"],
     ];
     await contractAccount.functionCall({
       contractId,
@@ -713,8 +713,9 @@ describe("NFT Series", function () {
       )
         distrCount2++;
     });
-    if (distrCount1 !== asset_distribution[0][1]) assert(false);
-    if (distrCount2 !== asset_distribution[1][1]) assert(false);
+
+    if (distrCount1 !== parseInt(asset_distribution[0][1], 10)) assert(false);
+    if (distrCount2 !== parseInt(asset_distribution[1][1], 10)) assert(false);
   });
 
   it("should allow owner to create a fully-generative type with multiple asset filetypes", async function () {
@@ -886,7 +887,7 @@ describe("NFT Series", function () {
     }
   });
 
-  it("should allow the owner to update any type metadata fields EXCEPT for `copies`", async function () {
+  it("should allow the owner to update any type metadata fields EXCEPT for `media` and `copies`", async function () {
     const updatedTitle = token_type_title_semi_gen + " - updated";
     const updatedDescription = "Updated description";
     const updatedMedia =
@@ -904,7 +905,7 @@ describe("NFT Series", function () {
 
     await contractAccount.functionCall({
       contractId,
-      methodName: "nft_patch_type",
+      methodName: "nft_update_type",
       args: {
         token_type_title: token_type_title_semi_gen,
         metadata: {
@@ -932,7 +933,10 @@ describe("NFT Series", function () {
       token_type_updated.metadata.description,
       updatedDescription
     );
-    assert.strictEqual(token_type_updated.metadata.media, updatedMedia);
+    assert.strictEqual(
+      token_type_updated.metadata.media,
+      token_type_original.metadata.media
+    );
     assert.strictEqual(
       token_type_updated.metadata.copies,
       token_type_original.metadata.copies
@@ -941,7 +945,7 @@ describe("NFT Series", function () {
     // revert to original values for future tests
     await contractAccount.functionCall({
       contractId,
-      methodName: "nft_patch_type",
+      methodName: "nft_update_type",
       args: {
         token_type_title: token_type_title_semi_gen,
         metadata: {
@@ -989,7 +993,7 @@ describe("NFT Series", function () {
 
     await contractAccount.functionCall({
       contractId,
-      methodName: "nft_patch_type",
+      methodName: "nft_update_type",
       args: {
         token_type_title: token_type_title_semi_gen,
         royalty: updatedRoyalties,
@@ -1011,7 +1015,7 @@ describe("NFT Series", function () {
     // revert to original value for future tests
     await contractAccount.functionCall({
       contractId,
-      methodName: "nft_patch_type",
+      methodName: "nft_update_type",
       args: {
         token_type_title: token_type_title_semi_gen,
         royalty: token_type_original.royalty,

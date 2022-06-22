@@ -23,7 +23,6 @@ impl NonFungibleTokenRoyalty for Contract {
   	//calculates the payout for a token given the passed in balance. This is a view method
 	fn nft_payout(&self, token_id: TokenId, balance: U128, max_len_payout: u32) -> Payout {
 		//get the token object
-		// let token = versioned_token_to_token(self.nft_token(token_id.clone()).expect("no token"));
 		let token = self.nft_token(token_id.clone()).expect("no token");
 
 		//get the owner of the token
@@ -40,7 +39,6 @@ impl NonFungibleTokenRoyalty for Contract {
 		let mut token_id_iter = token_id.split(TOKEN_DELIMETER);
 		let token_type_id = token_id_iter.next().unwrap().parse().unwrap();
 		let royalty = self.token_type_by_id.get(&token_type_id).expect("no type").royalty;
-		// let royalty = token.royalty;
 
 		//make sure we're not paying out to too many people (GAS limits this)
 		assert!(royalty.len() as u32 <= max_len_payout, "Market cannot payout to that many receivers");
@@ -80,7 +78,6 @@ impl NonFungibleTokenRoyalty for Contract {
 
 		let type_mint_args = memo.clone();
 		let previous_token = if let Some(type_mint_args) = type_mint_args {
-			log!(format!("type_mint_args: {}", type_mint_args));
 			let TypeMintArgs{token_type_title, receiver_id} = near_sdk::serde_json::from_str(&type_mint_args).expect("invalid TypeMintArgs");
 			self.nft_mint_type(token_type_title, receiver_id.clone(), None)
 		} else {
