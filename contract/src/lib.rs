@@ -43,52 +43,6 @@ pub const TITLE_DELIMETER: &str = " — ";
 /// e.g. "Title — 2/10" where 10 is max copies
 pub const EDITION_DELIMETER: &str = "/";
 
-#[derive(BorshDeserialize, BorshSerialize)]
-pub struct TokenType {
-	metadata: TokenTypeMetadata,
-	owner_id: AccountId,
-	royalty: HashMap<AccountId, u32>,
-	tokens: UnorderedSet<TokenId>,
-	approved_market_id: Option<AccountId>,
-}
-
-#[derive(Serialize, Deserialize)]
-#[serde(crate = "near_sdk::serde")]
-pub struct TokenTypeJson {
-	metadata: TokenTypeMetadata,
-	owner_id: AccountId,
-	royalty: HashMap<AccountId, u32>,
-}
-
-#[derive(Serialize, Deserialize)]
-#[serde(crate = "near_sdk::serde")]
-pub struct TypeMintArgs {
-	token_type_title: TokenTypeTitle,
-	receiver_id: AccountId,
-}
-
-/// Contains potentially large vectors which are used when minting NFTs for a type.
-/// Stored in separate struct rather than on `TokenType` to avoid using gas on loading these vectors into memory on enumeration methods, e.g. `nft_token`
-#[derive(Debug, BorshDeserialize, BorshSerialize, Serialize, Deserialize)]
-#[serde(crate = "near_sdk::serde")]
-pub struct TokenTypeMintArgs {
-	asset_filetypes: Vec<String>, // e.g. ["jpg", "png", "mp4"]
-	asset_distribution: Vec<AssetDetail>,
-	asset_count: Option<u64>, 
-	has_json: Option<bool>, // indicates whether there is a corresponding json file available on IPFS for each asset ID (this will be added to extra on enumeration)
-}
-
-#[derive(BorshSerialize, BorshDeserialize)]
-pub enum VersionedTokenTypeMintArgs { 
-    Current(TokenTypeMintArgs),
-}
-
-pub fn versioned_mint_args_to_mint_args(versioned_type_mint_args: VersionedTokenTypeMintArgs) -> TokenTypeMintArgs {
-	match versioned_type_mint_args {
-		VersionedTokenTypeMintArgs::Current(current) => current,
-	}
-}
-
 // CONTRACT
 
 #[near_bindgen]
@@ -109,7 +63,8 @@ pub struct Contract { // CURRENT
 	contract_source_metadata: LazyOption<VersionedContractSourceMetadata>, // CONTRACT SOURCE METADATA: https://github.com/near/NEPs/blob/master/neps/nep-0330.md
 	token_type_by_title: LookupMap<TokenTypeTitle, TokenTypeId>,
 	token_type_by_id: UnorderedMap<TokenTypeId, TokenType>,
-	token_type_mint_args_by_id: LookupMap<TokenTypeId, VersionedTokenTypeMintArgs>, // parallel with token_type_by_id - used by minting function to set up NFT
+	token_type_assets_by_id: LookupMap<TokenTypeId, TokenTypeAssets>, // parallel with token_type_by_id - used by minting function to set up NFT
+	// token_type_mint_args_by_id: LookupMap<TokenTypeId, VersionedTokenTypeMintArgs>, // parallel with token_type_by_id - used by minting function to set up NFT
 }
 
 #[derive(BorshSerialize, BorshDeserialize)]
@@ -138,7 +93,7 @@ pub enum StorageKey {
     TokenTypeByTitle,
     TokenTypeById,
     TokensByTypeInner { token_type_id: u64 },
-		TokenTypeMintArgsById,
+		TokenTypeAssetsById,
 }
 
 #[near_bindgen]
@@ -185,7 +140,7 @@ impl Contract {
 						))),
 						token_type_by_id: UnorderedMap::new(StorageKey::TokenTypeById),
 						token_type_by_title: LookupMap::new(StorageKey::TokenTypeByTitle),
-						token_type_mint_args_by_id: LookupMap::new(StorageKey::TokenTypeMintArgsById),
+						token_type_assets_by_id: LookupMap::new(StorageKey::TokenTypeAssetsById),
             metadata: LazyOption::new(StorageKey::Metadata, Some(&metadata)),
 						contract_source_metadata: LazyOption::new(StorageKey::SourceMetadata, Some(&VersionedContractSourceMetadata::Current(source_metadata))),
         }

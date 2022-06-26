@@ -279,8 +279,8 @@ impl NonFungibleToken {
                 description: Some("a".repeat(64)),
                 media: Some("a".repeat(64)),
                 copies: Some(1),
-                asset_id: Some(String::from("1")),
-                filetype: Some(String::from("jpg")),
+                // asset_id: Some(String::from("1")),
+                // filetype: Some(String::from("jpg")),
                 extra: Some(String::from("1.json")),
             };
             token_metadata_by_id.insert(
@@ -547,17 +547,13 @@ impl NonFungibleTokenCore for Contract {
 		let token_type_id = token_id_iter.next().unwrap().parse().unwrap();
 		// make edition titles nice for showing in wallet
         let token_type = self.token_type_by_id.get(&token_type_id).unwrap();
-        // let mut final_metadata = token_type.metadata;
 		let mut final_metadata = TokenMetadata {
             title: token_type.metadata.title,
             description: token_type.metadata.description,
             media: token_type.metadata.media,
             copies: token_type.metadata.copies,
-            asset_id: None,
-            filetype: None,
             extra: None,
         };
-		// let copies = final_metadata.copies;
 		if let Some(copies) = final_metadata.copies {
 			final_metadata.title = Some(
 				format!(
@@ -573,18 +569,16 @@ impl NonFungibleTokenCore for Contract {
 
         let token_metadata_versioned = tokens.token_metadata_by_id.as_ref().unwrap().get(&token_id).unwrap();
         let token_metadata = TokenMetadata::from(token_metadata_versioned);
-        let asset_id = &token_metadata.asset_id;
-        let filetype = &token_metadata.filetype;
         let extra = &token_metadata.extra;
-        let media = final_metadata.clone().media.unwrap();
-        if asset_id.is_some() && filetype.is_some() {
-            // older NFTs (pre-generative upgrade c. 6/15/22) won't have asset_id or file_type
-            // media cid for this series + asset token ID + filetype maps to a media asset on IPFS
-            final_metadata.media = Some(format!("{}/{}.{}", media.clone(), asset_id.clone().unwrap(), filetype.clone().unwrap()));
+        let type_media = final_metadata.clone().media.unwrap();
+        if token_metadata.media.is_some() {
+            // older NFTs (pre-generative upgrade c. 6/15/22) won't have media on the individual token
+            // media cid for this series (directory cid) + token_metadata.media maps to a media asset on IPFS
+            final_metadata.media = Some(format!("{}/{}", type_media.clone(), token_metadata.media.unwrap()));
         }
         if extra.is_some() {
-            // media cid for this series + asset token ID + .json maps to a json asset on IPFS
-            final_metadata.extra = Some(format!("{}/{}.json", media.clone(), asset_id.clone().unwrap()));
+            // media cid for this series (directory cid) + token_metadata.extra maps to a json asset on IPFS
+            final_metadata.extra = Some(format!("{}/{}", type_media.clone(), token_metadata.extra.unwrap()));
         }
 		
 		// CUSTOM

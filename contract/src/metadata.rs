@@ -60,33 +60,47 @@ pub struct NFTContractMetadata {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, BorshDeserialize, BorshSerialize)]
 #[serde(crate = "near_sdk::serde")]
 pub struct TokenTypeMetadata {
+    /// NFT title, which will be used as base for each individual NFT's title on enumeration methods
+    pub title: Option<String>,
+    /// NFT description, which will be returned as each individual NFT's description on enumeration methods
+    pub description: Option<String>,
+    /// As of `v1-v2-migrate`, this is the CID of the ipfs DIRECTORY that contains NFT assets (these filenames, the contents of this directory, are stored as `media` & `extra` on individual NFTs (TokenMetadata)). In v1, this was the CID of the media itself (not the directory), as the directory upload pattern was not used.
+    pub media: Option<String>,
+    /// total number of copies for this NFT (minted + to-be-minted)
+    pub copies: Option<u64>,
+}
+
+#[derive(Debug, Clone, PartialEq, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
+#[serde(crate = "near_sdk::serde")]
+pub enum VersionedTokenTypeMetadata {
+    Current(TokenTypeMetadata),
+}
+
+/// OLD Metadata on the individual token level
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, BorshDeserialize, BorshSerialize)]
+#[serde(crate = "near_sdk::serde")]
+pub struct TokenMetadataV1 {
     pub title: Option<String>, // ex. "Arch Nemesis: Mail Carrier" or "Parcel #5055"
     pub description: Option<String>, // free-form description
     pub media: Option<String>, // URL to associated media, preferably to decentralized, content-addressed storage
     pub copies: Option<u64>, // number of copies of this set of metadata in existence when token was minted.
 }
 
-/// Metadata on the individual token level.
+/// CURRENT Metadata on the individual token level
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, BorshDeserialize, BorshSerialize)]
 #[serde(crate = "near_sdk::serde")]
-pub struct TokenMetadataV1 { // OLD TOKEN METADATA
-    pub title: Option<String>, // ex. "Arch Nemesis: Mail Carrier" or "Parcel #5055"
+pub struct TokenMetadata {
+    /// This is always `None` when stored in contract; on enumeration, NFT type title + token number + copies ("My NFT - 1/10") is used to generate title and attach to metadata
+    pub title: Option<String>,
+    /// This is always `None` when stored in contract; on enumeration, NFT type description is attached to metadata
     pub description: Option<String>, // free-form description
-    pub media: Option<String>, // URL to associated media, preferably to decentralized, content-addressed storage
-    pub copies: Option<u64>, // number of copies of this set of metadata in existence when token was minted.
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, BorshDeserialize, BorshSerialize)]
-#[serde(crate = "near_sdk::serde")]
-pub struct TokenMetadata { // CURRENT TOKEN METADATA
-    pub title: Option<String>, // ex. "Arch Nemesis: Mail Carrier" or "Parcel #5055"
-    pub description: Option<String>, // free-form description
-    pub media: Option<String>, // URL to associated media, preferably to decentralized, content-addressed storage
-    pub copies: Option<u64>, // number of copies of this set of metadata in existence when token was minted.
+    /// When stored in `token_metadata_by_id`, this is filename of media asset on IPFS. When returned as metadata on token enumeration methods, this is {cid}/{filename}, which can be appended to the contract's base url to create a full `media` url
+    pub media: Option<String>,
+    /// This is always `None` when stored in contract; on enumeration, NFT type `copies` is attached to metadata
+    pub copies: Option<u64>,
     // NEW FIELDS
-    pub asset_id: Option<String>,
-    pub filetype: Option<String>,
-    pub extra: Option<String>, // anything extra the NFT wants to store on-chain. Can be stringified JSON.
+    /// When stored in `token_metadata_by_id`, this is filename of extra asset (e.g. json) on IPFS. When returned as metadata on token enumeration methods, it is {cid}/{filename}, which can be appended to the contract's base url to create a full `extra` url
+    pub extra: Option<String>,
     // TODO: add `updatedAt`? other fields?
 }
 
