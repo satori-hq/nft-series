@@ -38,7 +38,9 @@ impl NonFungibleTokenRoyalty for Contract {
 		//get the royalty object from token
 		let mut token_id_iter = token_id.split(TOKEN_DELIMETER);
 		let token_type_id = token_id_iter.next().unwrap().parse().unwrap();
-		let royalty = self.token_type_by_id.get(&token_type_id).expect("no type").royalty;
+		let versioned_token_type = self.token_type_by_id.get(&token_type_id).expect("no type");
+		let token_type = versioned_token_type_to_token_type(versioned_token_type);
+		let royalty = token_type.royalty;
 
 		//make sure we're not paying out to too many people (GAS limits this)
 		assert!(royalty.len() as u32 <= max_len_payout, "Market cannot payout to that many receivers");
@@ -99,7 +101,9 @@ impl NonFungibleTokenRoyalty for Contract {
 				};
 				let mut token_id_iter = token_id.split(TOKEN_DELIMETER);
 				let token_type_id = token_id_iter.next().unwrap().parse().unwrap();
-				let royalty = self.token_type_by_id.get(&token_type_id).expect("no type").royalty;
+				let versioned_token_type = self.token_type_by_id.get(&token_type_id).expect("no type");
+				let token_type = versioned_token_type_to_token_type(versioned_token_type);
+				let royalty = token_type.royalty;
 
 				if let Some(max_len_payout) = max_len_payout {
 						assert!(royalty.len() as u32 <= max_len_payout, "exceeds max_len_payout");

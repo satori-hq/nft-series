@@ -139,16 +139,18 @@ impl NonFungibleTokenEnumeration for Contract {
             .take(limit)
             .map(|token_id| self.nft_token(token_id).unwrap())
             .collect()
-    }
+  }
   
   /// CUSTOM VIEWS for typed tokens
   
   fn nft_get_type(&self, token_type_title: TokenTypeTitle) -> TokenTypeJson {
-    let token_type = self.token_type_by_id.get(&self.token_type_by_title.get(&token_type_title).expect("no type")).expect("no type");
-    TokenTypeJson{
+    let versioned_token_type = self.token_type_by_id.get(&self.token_type_by_title.get(&token_type_title).expect("no type")).expect("no type");
+		let token_type = versioned_token_type_to_token_type(versioned_token_type);
+    TokenTypeJson {
       metadata: token_type.metadata,
       owner_id: token_type.owner_id,
       royalty: token_type.royalty,
+      asset_count: token_type.asset_count, // TODO: REMOVE THIS
     }
   }
   
@@ -169,22 +171,29 @@ impl NonFungibleTokenEnumeration for Contract {
         let limit = limit.map(|v| v as usize).unwrap_or(usize::MAX);
         assert_ne!(limit, 0, "Cannot provide limit of 0.");
         
-    self.token_type_by_id.iter()
-            .skip(start_index as usize)
-            .take(limit)
-            .map(|(_, token_type)| TokenTypeJson{
-        metadata: token_type.metadata,
-        owner_id: token_type.owner_id,
-        royalty: token_type.royalty,
+    let token_types = self.token_type_by_id.iter()
+      .skip(start_index as usize)
+      .take(limit)
+      .map(|(_, versioned_token_type)| {
+        let token_type = versioned_token_type_to_token_type(versioned_token_type);
+        TokenTypeJson {
+          metadata: token_type.metadata,
+          owner_id: token_type.owner_id,
+          royalty: token_type.royalty,
+          asset_count: token_type.asset_count, // TODO: REMOVE THIS
+        }
       })
-            .collect()
+      .collect();
+      token_types
   }
   
   fn nft_supply_for_type(
         &self,
         token_type_title: TokenTypeTitle,
     ) -> U64 {
-        self.token_type_by_id.get(&self.token_type_by_title.get(&token_type_title).expect("no type")).expect("no type").tokens.len().into()
+        let versioned_token_type = self.token_type_by_id.get(&self.token_type_by_title.get(&token_type_title).expect("no type")).expect("no type");
+        let token_type = versioned_token_type_to_token_type(versioned_token_type);
+        token_type.tokens.len().into()
   }
   
   fn nft_tokens_by_type(
@@ -194,7 +203,9 @@ impl NonFungibleTokenEnumeration for Contract {
     limit: Option<u64>
   ) -> Vec<Token> {
     let start_index: u128 = from_index.map(From::from).unwrap_or_default();
-    let tokens = self.token_type_by_id.get(&self.token_type_by_title.get(&token_type_title).expect("no type")).expect("no type").tokens;
+    let versioned_token_type = self.token_type_by_id.get(&self.token_type_by_title.get(&token_type_title).expect("no type")).expect("no type");
+    let token_type = versioned_token_type_to_token_type(versioned_token_type);
+    let tokens = token_type.tokens;
     assert!(
         (tokens.len() as u128) >= start_index,
         "Out of bounds, please use a smaller from_index."

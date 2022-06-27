@@ -546,7 +546,8 @@ impl NonFungibleTokenCore for Contract {
 		let mut token_id_iter = token_id.split(TOKEN_DELIMETER);
 		let token_type_id = token_id_iter.next().unwrap().parse().unwrap();
 		// make edition titles nice for showing in wallet
-        let token_type = self.token_type_by_id.get(&token_type_id).unwrap();
+        let versioned_token_type = self.token_type_by_id.get(&token_type_id).unwrap();
+        let token_type = versioned_token_type_to_token_type(versioned_token_type);
 		let mut final_metadata = TokenMetadata {
             title: token_type.metadata.title,
             description: token_type.metadata.description,

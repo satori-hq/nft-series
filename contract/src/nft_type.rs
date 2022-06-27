@@ -7,12 +7,60 @@ pub type AssetDetail = Vec<String>; // Vec with 3 x string elements. E.g. ["1.jp
 pub type TokenTypeAssets = Vec<AssetDetail>;
 
 #[derive(BorshDeserialize, BorshSerialize)]
-pub struct TokenType {
+pub struct TokenTypeV1 {
 	pub metadata: TokenTypeMetadata,
 	pub owner_id: AccountId,
 	pub royalty: HashMap<AccountId, u32>,
 	pub tokens: UnorderedSet<TokenId>,
 	pub approved_market_id: Option<AccountId>,
+}
+
+#[derive(BorshDeserialize, BorshSerialize)]
+pub struct TokenType {
+	pub metadata: TokenTypeMetadata,
+	pub asset_count: u64,
+	pub owner_id: AccountId,
+	pub royalty: HashMap<AccountId, u32>,
+	pub tokens: UnorderedSet<TokenId>,
+	pub approved_market_id: Option<AccountId>,
+}
+
+impl From<TokenTypeV1> for TokenType {
+	fn from(v1: TokenTypeV1) -> Self {
+		TokenType {
+			metadata: v1.metadata,
+			owner_id: v1.owner_id,
+			royalty: v1.royalty,
+			tokens: v1.tokens,
+			approved_market_id: v1.approved_market_id,
+			asset_count: 1, // all existing token types have 1 asset
+		}
+	}
+}
+
+pub fn versioned_token_type_to_token_type(versioned_token_type: VersionedTokenType) -> TokenType {
+	match versioned_token_type {
+			VersionedTokenType::Current(current) => current,
+			VersionedTokenType::V1(v1) => {
+				TokenType {
+					metadata: v1.metadata,
+					owner_id: v1.owner_id,
+					royalty: v1.royalty,
+					tokens: v1.tokens,
+					approved_market_id: v1.approved_market_id,
+					asset_count: 1, // all existing token types have 1 asset
+				}
+			}
+			// FINISH
+	}
+}
+
+// #[derive(Serialize, Deserialize)]
+// #[serde(crate = "near_sdk::serde")]
+#[derive(BorshDeserialize, BorshSerialize)]
+pub enum VersionedTokenType {
+		V1(TokenTypeV1),
+    Current(TokenType),
 }
 
 #[derive(Serialize, Deserialize)]
@@ -21,6 +69,8 @@ pub struct TokenTypeJson {
 	pub metadata: TokenTypeMetadata,
 	pub owner_id: AccountId,
 	pub royalty: HashMap<AccountId, u32>,
+	// TODO: REMOVE THIS
+	pub asset_count: u64,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -116,7 +166,7 @@ impl NonFungibleTokenType for Contract {
 		}
 		assert!(total_supply == metadata.copies.unwrap(), "Total supply must equal copies. Received {} total supply & {} copies", total_supply, metadata.copies.unwrap());
 
-		self.token_type_by_id.insert(&token_type_id, &TokenType{
+		let token_type = TokenType {
 			metadata,
 			owner_id,
 			royalty,
@@ -128,7 +178,11 @@ impl NonFungibleTokenType for Contract {
 				.unwrap(),
 			),
 			approved_market_id: None,
-		});
+			asset_count: assets.len() as u64,
+		};
+		let versioned_token_type = VersionedTokenType::from(VersionedTokenType::Current(token_type));
+
+		self.token_type_by_id.insert(&token_type_id, &versioned_token_type);
 
 		self.token_type_assets_by_id.insert(&token_type_id, &assets);
 
@@ -141,9 +195,11 @@ impl NonFungibleTokenType for Contract {
 		) {
 		assert_eq!(env::predecessor_account_id(), self.tokens().owner_id, "Unauthorized");
 		let token_type_id = self.token_type_by_title.get(&token_type_title).expect("no type");
-		let mut token_type = self.token_type_by_id.get(&token_type_id).expect("no token");
+		let mut versioned_token_type = self.token_type_by_id.get(&token_type_id).expect("no token");
+		let mut token_type = versioned_token_type_to_token_type(versioned_token_type);
 		token_type.metadata.copies = Some(token_type.tokens.len());
-		self.token_type_by_id.insert(&token_type_id, &token_type);
+		versioned_token_type = VersionedTokenType::from(VersionedTokenType::Current(token_type));
+		self.token_type_by_id.insert(&token_type_id, &versioned_token_type);
 		// TODO: remove assets vector?
 	}
 
@@ -159,7 +215,8 @@ impl NonFungibleTokenType for Contract {
 		assert_eq!(owner_id.clone(), self.tokens().owner_id, "Unauthorized");
 
 		let token_type_id = self.token_type_by_title.get(&token_type_title).expect("no type");
-		let mut token_type = self.token_type_by_id.get(&token_type_id).expect("no token");
+		let mut versioned_token_type = self.token_type_by_id.get(&token_type_id).expect("no token");
+		let mut token_type = versioned_token_type_to_token_type(versioned_token_type);
 
 		if let Some(metadata) = metadata {
 			if metadata.title.is_some() {
@@ -177,7 +234,10 @@ impl NonFungibleTokenType for Contract {
 		if let Some(royalty) = royalty {
 			token_type.royalty = royalty
 		}
-		self.token_type_by_id.insert(&token_type_id, &token_type);
+		// convert back to versioned
+		versioned_token_type = VersionedTokenType::from(VersionedTokenType::Current(token_type));
+
+		self.token_type_by_id.insert(&token_type_id, &versioned_token_type);
 
 		let amt_to_refund = if env::storage_usage() > initial_storage_usage { env::storage_usage() - initial_storage_usage } else { initial_storage_usage - env::storage_usage() };
     refund_deposit(amt_to_refund);
@@ -197,7 +257,9 @@ impl NonFungibleTokenType for Contract {
 
 		// get token type & mint args
 		let token_type_id = self.token_type_by_title.get(&token_type_title).expect("no type");
-		let mut token_type = self.token_type_by_id.get(&token_type_id).expect("no token");
+		let mut versioned_token_type = self.token_type_by_id.get(&token_type_id).expect("no token");
+		let mut token_type = versioned_token_type_to_token_type(versioned_token_type);
+
 		assert_eq!(&env::predecessor_account_id(), &token_type.owner_id, "not type owner");
 
 		let num_tokens = token_type.tokens.len();
@@ -245,7 +307,10 @@ impl NonFungibleTokenType for Contract {
 
 		let token_id = format!("{}{}{}", &token_type_id, TOKEN_DELIMETER, num_tokens + 1);
 		token_type.tokens.insert(&token_id);
-		self.token_type_by_id.insert(&token_type_id, &token_type);
+
+		// convert back to versioned
+		versioned_token_type = VersionedTokenType::from(VersionedTokenType::Current(token_type));
+		self.token_type_by_id.insert(&token_type_id, &versioned_token_type);
 
 		let token = self.tokens_mut().internal_mint(token_id.clone(), receiver_id.clone(), Some(VersionedTokenMetadata::from(VersionedTokenMetadata::Current(final_metadata))));
 
@@ -276,7 +341,9 @@ impl NonFungibleTokenType for Contract {
 		assert_eq!(owner_id.clone(), self.tokens().owner_id, "Unauthorized");
 
 		let token_type_id = self.token_type_by_title.get(&token_type_title).expect("no type");
-		let token_type = self.token_type_by_id.get(&token_type_id).expect("no token");
+		let versioned_token_type = self.token_type_by_id.get(&token_type_id).expect("no token");
+		let token_type = versioned_token_type_to_token_type(versioned_token_type);
+		
 		// check if there are any tokens (can't delete if there are minted NFTs)
 		let num_tokens = token_type.tokens.len();
 		assert!(num_tokens < 1, "Cannot delete a type that contains tokens (found {} tokens)", num_tokens);

@@ -51,7 +51,7 @@ pub struct ContractV1 { // OLD
 	tokens: NonFungibleTokenV1,
 	metadata: LazyOption<NFTContractMetadata>,
 	token_type_by_title: LookupMap<TokenTypeTitle, TokenTypeId>,
-	token_type_by_id: UnorderedMap<TokenTypeId, TokenType>,
+	token_type_by_id: UnorderedMap<TokenTypeId, TokenTypeV1>,
 }
 
 #[near_bindgen]
@@ -62,7 +62,8 @@ pub struct Contract { // CURRENT
 	metadata: LazyOption<NFTContractMetadata>,
 	contract_source_metadata: LazyOption<VersionedContractSourceMetadata>, // CONTRACT SOURCE METADATA: https://github.com/near/NEPs/blob/master/neps/nep-0330.md
 	token_type_by_title: LookupMap<TokenTypeTitle, TokenTypeId>,
-	token_type_by_id: UnorderedMap<TokenTypeId, TokenType>,
+	token_type_by_id_v1: UnorderedMap<TokenTypeId, TokenTypeV1>,
+	token_type_by_id: UnorderedMap<TokenTypeId, VersionedTokenType>,
 	token_type_assets_by_id: LookupMap<TokenTypeId, TokenTypeAssets>, // parallel with token_type_by_id - used by minting function to set up NFT
 	// token_type_mint_args_by_id: LookupMap<TokenTypeId, VersionedTokenTypeMintArgs>, // parallel with token_type_by_id - used by minting function to set up NFT
 }
@@ -91,7 +92,8 @@ pub enum StorageKey {
 		TokenPerOwnerInner { account_id_hash: CryptoHash },
 	// CUSTOM
     TokenTypeByTitle,
-    TokenTypeById,
+    TokenTypeById, // INACTIVE - self.token_type_by_id_v1 located here
+		TokenTypeById2, // ACTIVE - self.token_type_by_id located here
     TokensByTypeInner { token_type_id: u64 },
 		TokenTypeAssetsById,
 }
@@ -120,7 +122,8 @@ impl From<ContractV1> for Contract {
 			// fields that haven't changed are hooked up to old pointers
 			metadata: v1.metadata, // no changes; bring over directly (essentially just attaching this new variable to the same storage key)
 			token_type_by_title: v1.token_type_by_title, // no changes, bring over directly (essentially just attaching this new variable to the same storage key)
-			token_type_by_id: v1.token_type_by_id, // no changes, bring over directly (essentially just attaching this new variable to the same storage key)
+			token_type_by_id_v1: v1.token_type_by_id, // no changes, bring over directly (essentially just attaching this new variable to the same storage key)
+			token_type_by_id: UnorderedMap::new(StorageKey::TokenTypeById2), // instantiate new mapping to expect new shape (TokenType, versus TokenTypeV1)
 			tokens_v1: tokens_old, // move old `tokens` to tokens_v1` (this will be deprecated in next deploy)
 			// UPGRADED FIELDS
 			tokens: VersionedNonFungibleToken::from(VersionedNonFungibleToken::Current(tokens_new)),
@@ -173,7 +176,8 @@ impl Contract {
 							Some(StorageKey::Enumeration),
 							Some(StorageKey::Approval),
 						))),
-						token_type_by_id: UnorderedMap::new(StorageKey::TokenTypeById),
+						token_type_by_id_v1: UnorderedMap::new(StorageKey::TokenTypeById),
+						token_type_by_id: UnorderedMap::new(StorageKey::TokenTypeById2),
 						token_type_by_title: LookupMap::new(StorageKey::TokenTypeByTitle),
 						token_type_assets_by_id: LookupMap::new(StorageKey::TokenTypeAssetsById),
             metadata: LazyOption::new(StorageKey::Metadata, Some(&metadata)),
@@ -248,7 +252,21 @@ impl Contract {
 
 			let amt_to_refund = if env::storage_usage() > initial_storage_usage { env::storage_usage() - initial_storage_usage } else { initial_storage_usage - env::storage_usage() };
 			refund_deposit(amt_to_refund);
-	}
+		}
+
+		#[payable]
+		pub fn upgrade_token_types(&mut self) {
+			let token_type_ids_v1: Vec<TokenTypeId> = self.token_type_by_id_v1.iter().map(|(token_type_id, _)| token_type_id).collect();
+			token_type_ids_v1.iter().for_each(|token_type_id| {
+				let token_type_v1 = self.token_type_by_id_v1.get(&token_type_id).unwrap();
+				let updated_token_type = TokenType::from(token_type_v1);
+				let versioned_token_type = VersionedTokenType::from(VersionedTokenType::Current(updated_token_type));
+				log!(format!("inserting updated token type for token type id {}", token_type_id));
+				self.token_type_by_id.insert(&token_type_id, &versioned_token_type);
+				log!(format!("removing v1 token type for token type id {}", token_type_id));
+				self.token_type_by_id_v1.remove(&token_type_id);
+			})
+		}
 
 		/// Update `base_uri` for contract
 		#[payable]
