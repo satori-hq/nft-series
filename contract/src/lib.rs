@@ -42,6 +42,8 @@ pub const TOKEN_DELIMETER: char = ':';
 pub const TITLE_DELIMETER: &str = " — ";
 /// e.g. "Title — 2/10" where 10 is max copies
 pub const EDITION_DELIMETER: &str = "/";
+/// between filename and extension e.g. "cat.jpg" where cat is filename and jpg is extension
+pub const FILE_DELIMETER: char = '.';
 
 // CONTRACT
 
@@ -51,7 +53,7 @@ pub struct ContractV1 { // OLD
 	tokens: NonFungibleTokenV1,
 	metadata: LazyOption<NFTContractMetadata>,
 	token_type_by_title: LookupMap<TokenTypeTitle, TokenTypeId>,
-	token_type_by_id: UnorderedMap<TokenTypeId, TokenType>,
+	token_type_by_id: UnorderedMap<TokenTypeId, TokenTypeV1>,
 }
 
 #[near_bindgen]
@@ -62,7 +64,8 @@ pub struct Contract { // CURRENT
 	metadata: LazyOption<NFTContractMetadata>,
 	contract_source_metadata: LazyOption<VersionedContractSourceMetadata>, // CONTRACT SOURCE METADATA: https://github.com/near/NEPs/blob/master/neps/nep-0330.md
 	token_type_by_title: LookupMap<TokenTypeTitle, TokenTypeId>,
-	token_type_by_id: UnorderedMap<TokenTypeId, TokenType>,
+	token_type_by_id_v1: UnorderedMap<TokenTypeId, TokenTypeV1>,
+	token_type_by_id: UnorderedMap<TokenTypeId, VersionedTokenType>,
 	token_type_assets_by_id: LookupMap<TokenTypeId, TokenTypeAssets>, // parallel with token_type_by_id - used by minting function to set up NFT
 	// token_type_mint_args_by_id: LookupMap<TokenTypeId, VersionedTokenTypeMintArgs>, // parallel with token_type_by_id - used by minting function to set up NFT
 }
@@ -91,7 +94,8 @@ pub enum StorageKey {
 		TokenPerOwnerInner { account_id_hash: CryptoHash },
 		// CUSTOM
     TokenTypeByTitle,
-    TokenTypeById,
+    TokenTypeById, // INACTIVE - self.token_type_by_id_v1 located here
+		TokenTypeById2, // ACTIVE - self.token_type_by_id located here
     TokensByTypeInner { token_type_id: u64 },
 		TokenTypeAssetsById,
 }
@@ -138,7 +142,8 @@ impl Contract {
 							Some(StorageKey::Enumeration),
 							Some(StorageKey::Approval),
 						))),
-						token_type_by_id: UnorderedMap::new(StorageKey::TokenTypeById),
+						token_type_by_id_v1: UnorderedMap::new(StorageKey::TokenTypeById),
+						token_type_by_id: UnorderedMap::new(StorageKey::TokenTypeById2),
 						token_type_by_title: LookupMap::new(StorageKey::TokenTypeByTitle),
 						token_type_assets_by_id: LookupMap::new(StorageKey::TokenTypeAssetsById),
             metadata: LazyOption::new(StorageKey::Metadata, Some(&metadata)),

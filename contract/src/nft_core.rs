@@ -546,7 +546,16 @@ impl NonFungibleTokenCore for Contract {
 		let mut token_id_iter = token_id.split(TOKEN_DELIMETER);
 		let token_type_id = token_id_iter.next().unwrap().parse().unwrap();
 		// make edition titles nice for showing in wallet
-        let token_type = self.token_type_by_id.get(&token_type_id).unwrap();
+        // let versioned_token_type = self.token_type_by_id.get(&token_type_id).unwrap();
+        let versioned_token_type_current = self.token_type_by_id.get(&token_type_id);
+        let versioned_token_type = if versioned_token_type_current.is_some() {
+            versioned_token_type_current
+        } else {
+            // we're in the middle of migrating; take from token_types_v1
+            Some(VersionedTokenType::from(VersionedTokenType::Current(TokenType::from(self.token_type_by_id_v1.get(&token_type_id).unwrap()))))
+            // Some(VersionedTokenMetadata::from(VersionedTokenMetadata::Current(TokenMetadata::from(self.tokens_v1().token_metadata_by_id.as_ref().unwrap().get(&token_id).unwrap()))))
+        };
+        let token_type = versioned_token_type_to_token_type(versioned_token_type.unwrap());
 		let mut final_metadata = TokenMetadata {
             title: token_type.metadata.title,
             description: token_type.metadata.description,
@@ -554,21 +563,32 @@ impl NonFungibleTokenCore for Contract {
             copies: token_type.metadata.copies,
             extra: None,
         };
-		if let Some(copies) = final_metadata.copies {
-			final_metadata.title = Some(
-				format!(
-					"{}{}{}{}{}",
-					final_metadata.title.unwrap(),
-					TITLE_DELIMETER,
-					token_id_iter.next().unwrap(),
-					EDITION_DELIMETER,
-					copies
-				)
-			);
-		}
 
         let token_metadata_versioned = tokens.token_metadata_by_id.as_ref().unwrap().get(&token_id).unwrap();
-        let token_metadata = TokenMetadata::from(token_metadata_versioned);
+        let token_metadata = versioned_token_metadata_to_token_metadata(token_metadata_versioned);
+
+        if let Some(copies) = final_metadata.copies {
+            // {TITLE}{TITLE_DELIMITER}{TOKEN_NUMBER}{EDITION_DELIMETER}{COPIES} e.g. "Lachlan's Serial NFT Project - 2/10"
+			final_metadata.title = if token_type.asset_count == 1 {
+                Some(format!(
+                    "{}{}{}{}{}",
+                    final_metadata.title.unwrap(),
+                    TITLE_DELIMETER,
+                    token_id_iter.next().unwrap(),
+                    EDITION_DELIMETER,
+                    copies
+                ))
+            } else {
+                // {TITLE}{TITLE_DELIMITER}{FILENAME} e.g. "Lachlan's Generative NFT Project - #4537" (in this case, media would be stored on IPFS as #4537.png or #4537.mp4 etc)
+                Some(format!(
+                    "{}{}{}",
+                    final_metadata.title.unwrap(),
+                    TITLE_DELIMETER,
+                    token_metadata.media.clone().unwrap().split(FILE_DELIMETER).next().unwrap(),
+                ))
+            }
+		}
+        
         let extra = &token_metadata.extra;
         let type_media = final_metadata.clone().media.unwrap();
         if token_metadata.media.is_some() {
