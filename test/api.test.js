@@ -462,8 +462,8 @@ describe("NFT Series", function () {
   it("should allow owner to create a semi-generative type", async function () {
     typeCopies = 6;
     assets = [
-      ["cat.jpg", "4", "cat1.json"],
-      ["dog.png", "2", "dog1.json"],
+      ["silver.jpg", "4", "silver.json"],
+      ["gold.png", "2", "gold.json"],
     ];
     await contractAccount.functionCall({
       contractId,
@@ -531,7 +531,7 @@ describe("NFT Series", function () {
       }
     );
 
-    // console.log("semi-gen tokens: ", tokens);
+    console.log("semi-gen tokens: ", tokens);
 
     // check for expected quantity of each filetype
     let distrCount1 = 0;
@@ -557,7 +557,7 @@ describe("NFT Series", function () {
     typeCopies = 10_000;
     assets = [];
     for (let i = 1; i <= 10_000; i++) {
-      assets.push([`koala-${i}.png`, "1", `koala-${i}.json`]);
+      assets.push([`#${i}.png`, "1", `#${i}.json`]);
     }
     try {
       await contractAccount.functionCall({
@@ -631,7 +631,7 @@ describe("NFT Series", function () {
       }
     );
 
-    // console.log("fully-gen tokens: ", tokens);
+    console.log("fully-gen tokens: ", tokens);
 
     // check that each token has expected media asset
     let foundCount = 0;
