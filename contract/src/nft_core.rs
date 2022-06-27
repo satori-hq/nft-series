@@ -565,7 +565,7 @@ impl NonFungibleTokenCore for Contract {
         };
 
         let token_metadata_versioned = tokens.token_metadata_by_id.as_ref().unwrap().get(&token_id).unwrap();
-        let token_metadata = versioned_token_metadata_to_token_metadata(token_metadata_versioned);
+        let token_metadata = TokenMetadata::from(token_metadata_versioned);
 
         if let Some(copies) = final_metadata.copies {
             // {TITLE}{TITLE_DELIMITER}{TOKEN_NUMBER}{EDITION_DELIMETER}{COPIES} e.g. "Lachlan's Serial NFT Project - 2/10"
