@@ -42,6 +42,8 @@ pub const TOKEN_DELIMETER: char = ':';
 pub const TITLE_DELIMETER: &str = " — ";
 /// e.g. "Title — 2/10" where 10 is max copies
 pub const EDITION_DELIMETER: &str = "/";
+/// between filename and extension e.g. "cat.jpg" where cat is filename and jpg is extension
+pub const FILE_DELIMETER: char = '.';
 
 // CONTRACT
 
