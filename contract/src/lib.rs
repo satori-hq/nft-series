@@ -207,27 +207,12 @@ impl Contract {
 			&mut self.tokens_v1
 		}
 
+		/// Add `extra` property to existing TokenMetadata
 		#[payable]
 		pub fn upgrade_token_metadata(&mut self, token_ids: Vec<TokenId>) {
 			let initial_storage_usage = env::storage_usage();
 			let owner_id = env::predecessor_account_id();
 			assert_eq!(owner_id.clone(), self.tokens().owner_id, "Unauthorized");
-
-			self.tokens_mut().token_metadata_by_id
-				.as_mut()
-				.and_then(|by_id| {
-					let metadata = by_id.get(&"1:1".to_string());
-					log!(format!("v2 metadata: {:#?}", metadata));
-					Some(by_id)
-				});
-
-			self.tokens_v1_mut().token_metadata_by_id
-				.as_mut()
-				.and_then(|by_id| {
-					let metadata = by_id.get(&"1:1".to_string());
-					log!(format!("v1 metadata: {:#?}", metadata));
-					Some(by_id)
-				});
 
 			token_ids
 				.iter()
@@ -256,6 +241,7 @@ impl Contract {
 			refund_deposit(amt_to_refund);
 		}
 
+		/// Add `asset_count` to existing token types
 		#[payable]
 		pub fn upgrade_token_types(&mut self) {
 			let token_type_ids_v1: Vec<TokenTypeId> = self.token_type_by_id_v1.iter().map(|(token_type_id, _)| token_type_id).collect();
@@ -268,6 +254,23 @@ impl Contract {
 				log!(format!("removing v1 token type for token type id {}", token_type_id));
 				self.token_type_by_id_v1.remove(&token_type_id);
 			})
+		}
+
+		#[payable]
+		pub fn patch_media_and_assets_for_token_type(&mut self, token_type_title: TokenTypeTitle, media: String, assets: Vec<AssetDetail>) {
+			assert!(assets.len() == 1, "Assets must be of length 1"); // existing token types have only one asset
+			let token_type_id = self.token_type_by_title.get(&token_type_title).expect("no type");
+			let mut versioned_token_type = self.token_type_by_id.get(&token_type_id).expect("token type has not been upgraded yet");
+			let mut token_type = versioned_token_type_to_token_type(versioned_token_type);
+
+			token_type.metadata.media = Some(media);
+			versioned_token_type = VersionedTokenType::from(VersionedTokenType::Current(token_type));
+			log!(format!("inserting updated metadata.media for token type {} with id {}", token_type_title, token_type_id));
+			self.token_type_by_id.insert(&token_type_id, &versioned_token_type);
+
+			log!(format!("inserting assets for token type {} with id {}", token_type_title, token_type_id));
+			self.token_type_assets_by_id.insert(&token_type_id, &assets);
+			log!("done!");
 		}
 
 		/// Update `base_uri` for contract

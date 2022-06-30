@@ -69,8 +69,6 @@ pub struct TokenTypeJson {
 	pub metadata: TokenTypeMetadata,
 	pub owner_id: AccountId,
 	pub royalty: HashMap<AccountId, u32>,
-	// TODO: REMOVE THIS
-	pub asset_count: u64,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -269,41 +267,44 @@ impl NonFungibleTokenType for Contract {
 		let mut final_metadata = TokenMetadata {
 			title: None, // this remains None; NFT title is taken from token_type on enumeration so there is no need to store it on individual token metadata as well
 			description: None, // this remains None; NFT description is taken from token_type on enumeration so there is no need to store it on individual token metadata as well
-			media: None, // this will become the asset filename that can be located inside the token_type directory CID (this directory CID is stored as `media` on token_type). E.g. "cat.jpg" => on enumeration, TokenMetadata.media will read "<TokenType.media>/<TokenMetadata.media>", e.g. "abcd1234/cat.jpg"
+			media: None, // initiate as None. If this is an updated v1 type or a post-v1 type, meaning `assets` array is present, `media` will become the asset filename that can be located inside the token_type directory CID (this directory CID is stored as `media` on token_type). E.g. "cat.jpg" => on enumeration, TokenMetadata.media will read "<TokenType.media>/<TokenMetadata.media>", e.g. "abcd1234/cat.jpg"
 			copies: None, // this remains None; NFT copies is taken from token_type on enumeration so there is no need to store it on individual token metadata as well
 			extra: None, // this will become the "extra" (e.g. off-chain json) filename that can be located inside the token_type directory CID (this directory CID is stored as `media` on token_type). E.g. "cat.json" (doesn't have to correspond to filename of media asset, btw) => on enumeration, TokenMetadata.extra will read "<TokenType.media>/<TokenMetadata.extra>", e.g. "abcd1234/cat.json"
 		};
 
 		// get the assets vector for this token_type; let the fun begin!
-		let mut assets = self.token_type_assets_by_id.get(&token_type_id).unwrap();
+		let assets = self.token_type_assets_by_id.get(&token_type_id);
 
-		let random_num = random_u128();
-		let random_asset_idx = random_num % assets.len() as u128;
-		let mut asset_detail = assets.get(random_asset_idx as usize).unwrap().clone();
-		let asset_filename = asset_detail.get(0).unwrap().clone(); // first element is filename of media asset stored inside IPFS directory
-		let mut supply_remaining: u64 = asset_detail.get(1).unwrap().clone().parse().unwrap(); // second element is supply remaining for this asset
-		let extra_filename = asset_detail.get(2).unwrap().clone(); // third element is filename of "extra" (e.g. off-chain json) stored inside IPFS directory
+		if let Some(mut assets) = assets {
+			let random_num = random_u128();
+			let random_asset_idx = random_num % assets.len() as u128;
+			let mut asset_detail = assets.get(random_asset_idx as usize).unwrap().clone();
+			let asset_filename = asset_detail.get(0).unwrap().clone(); // first element is filename of media asset stored inside IPFS directory
+			let mut supply_remaining: u64 = asset_detail.get(1).unwrap().clone().parse().unwrap(); // second element is supply remaining for this asset
+			let extra_filename = asset_detail.get(2).unwrap().clone(); // third element is filename of "extra" (e.g. off-chain json) stored inside IPFS directory
+	
+			// cleanup
+			if supply_remaining > 1 {
+				// if there is supply remaining, decrement supply
+				supply_remaining = supply_remaining - 1;
+				asset_detail.remove(1);
+				asset_detail.insert(1, supply_remaining.to_string());
+				assets.remove(random_asset_idx as usize);
+				assets.insert(random_asset_idx as usize, asset_detail);
+			} else {
+				// no supply left; remove asset from `assets` vector
+				assets.remove(random_asset_idx as usize);
+			}
 
-		// cleanup
-		if supply_remaining > 1 {
-			// if there is supply remaining, decrement supply
-			supply_remaining = supply_remaining - 1;
-			asset_detail.remove(1);
-			asset_detail.insert(1, supply_remaining.to_string());
-			assets.remove(random_asset_idx as usize);
-			assets.insert(random_asset_idx as usize, asset_detail);
-		} else {
-			// no supply left; remove asset from `assets` vector
-			assets.remove(random_asset_idx as usize);
+			self.token_type_assets_by_id.insert(&token_type_id, &assets);
+	
+			if extra_filename.len() > 0 { // if extra_filename is not an empty string (empty string means no "extra" data is available for this NFT), attach "extra" filename to NFT metadata
+				final_metadata.extra = Some(extra_filename.to_string());
+			};
+			
+			final_metadata.media = Some(asset_filename.to_string());
+
 		}
-
-		if extra_filename.len() > 0 { // if extra_filename is not an empty string (empty string means no "extra" data is available for this NFT), attach "extra" filename to NFT metadata
-			final_metadata.extra = Some(extra_filename.to_string());
-		};
-		
-		self.token_type_assets_by_id.insert(&token_type_id, &assets);
-
-		final_metadata.media = Some(asset_filename.to_string());
 
 		let token_id = format!("{}{}{}", &token_type_id, TOKEN_DELIMETER, num_tokens + 1);
 		token_type.tokens.insert(&token_id);
@@ -352,8 +353,8 @@ impl NonFungibleTokenType for Contract {
 		self.token_type_by_id.remove(&token_type_id);
 		// remove from token_type_by_title
 		self.token_type_by_title.remove(&token_type_title);
-		// remove from token_type_mint_args_by_id
-		self.token_type_assets_by_id.remove(&token_type_id); // TODO: will this error on contracts where self.token_type_mint_args_by_id is not present?
+		// remove from token_type_assets_by_id
+		self.token_type_assets_by_id.remove(&token_type_id);
 
 		let amt_to_refund = if env::storage_usage() > initial_storage_usage { env::storage_usage() - initial_storage_usage } else { initial_storage_usage - env::storage_usage() };
     refund_deposit(amt_to_refund);
