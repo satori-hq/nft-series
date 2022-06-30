@@ -126,7 +126,7 @@ describe("NFT Series", function () {
       args: {
         new_source_metadata: {
           version: updatedVersion,
-          commit_hash: updatedHash,
+          commit_sha: updatedHash,
           link: updatedLink,
         },
       },
@@ -140,7 +140,7 @@ describe("NFT Series", function () {
     );
 
     assert.strictEqual(source_metadata_updated.version, updatedVersion);
-    assert.strictEqual(source_metadata_updated.commit_hash, updatedHash);
+    assert.strictEqual(source_metadata_updated.commit_sha, updatedHash);
     assert.strictEqual(source_metadata_updated.link, updatedLink);
   });
 
@@ -171,8 +171,8 @@ describe("NFT Series", function () {
 
     assert.strictEqual(source_metadata_updated.version, updatedVersion);
     assert.strictEqual(
-      source_metadata_updated.commit_hash,
-      source_metadata_original.commit_hash
+      source_metadata_updated.commit_sha,
+      source_metadata_original.commit_sha
     );
     assert.strictEqual(
       source_metadata_updated.link,

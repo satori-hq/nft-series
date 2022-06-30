@@ -4,14 +4,14 @@ use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::{PanicOnDefault};
 
 /// Contract source metadata structure
-/// As per NEP 0330 (https://github.com/near/NEPs/blob/master/neps/nep-0330.md), with addition of `commit_hash`
+/// As per NEP 0330 (https://github.com/near/NEPs/blob/master/neps/nep-0330.md), with addition of `commit_sha`
 #[derive(Serialize, Deserialize, BorshDeserialize, BorshSerialize, PanicOnDefault)]
 #[serde(crate = "near_sdk::serde")]
 pub struct ContractSourceMetadata {
   /// e.g. "1.0.0" (for internal use)
 	pub version: Option<String>,
-  /// Git commit hash of currently deployed contract code
-  pub commit_hash: Option<String>,
+  /// Git commit sha of currently deployed contract code
+  pub commit_sha: Option<String>,
   /// GitHub repo url for currently deployed contract code
 	pub link: Option<String>,
 }
@@ -59,7 +59,7 @@ impl ContractSourceMetadataTrait for Contract {
       } else {
         ContractSourceMetadata {
           version: None,
-          commit_hash: None,
+          commit_sha: None,
           link: None,
         }
       };
@@ -69,8 +69,8 @@ impl ContractSourceMetadataTrait for Contract {
       if new_source_metadata.version.is_some() {
         source_metadata.version = new_source_metadata.version;
       }
-      if new_source_metadata.commit_hash.is_some() {
-        source_metadata.commit_hash = new_source_metadata.commit_hash;
+      if new_source_metadata.commit_sha.is_some() {
+        source_metadata.commit_sha = new_source_metadata.commit_sha;
       }
       self.contract_source_metadata.set(&VersionedContractSourceMetadata::from(VersionedContractSourceMetadata::Current(source_metadata)));
       

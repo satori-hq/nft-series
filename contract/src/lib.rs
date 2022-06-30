@@ -151,18 +151,19 @@ impl Contract {
                 reference: None,
                 reference_hash: None,
             },
-						ContractSourceMetadata {
-							version: Some("1.0.0".to_string()),
-							commit_hash: Some("b245d8f7fbe72c250cbabbd16544477f9958be2e".to_string()),
-							link: Some("https://github.com/satori-hq/nft-series".to_string()),
-						}
+						"b245d8f7fbe72c250cbabbd16544477f9958be2e".to_string(), // example commit sha
         )
     }
 
     #[init]
-    pub fn new(owner_id: AccountId, metadata: NFTContractMetadata, source_metadata: ContractSourceMetadata) -> Self {
+    pub fn new(owner_id: AccountId, metadata: NFTContractMetadata, commit_sha: String) -> Self {
         assert!(!env::state_exists(), "Already initialized");
         metadata.assert_valid();
+				let source_metadata = ContractSourceMetadata {
+					version: Some("v1-v2-migrate".to_string()), // THIS MUST BE MANUALLY UPDATED ON EACH VERSION CHANGE
+					commit_sha: Some(commit_sha), // SHA OF HEAD COMMIT IS QUERIED BY CONTRACT CALLER (SPEARMINT API)
+					link: Some("https://github.com/satori-hq/nft-series".to_string()),
+				};
         Self {
 						tokens_v1: NonFungibleTokenV1::new(
 							StorageKey::NonFungibleToken2,
