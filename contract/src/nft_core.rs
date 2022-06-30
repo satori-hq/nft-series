@@ -546,15 +546,7 @@ impl NonFungibleTokenCore for Contract {
 		let mut token_id_iter = token_id.split(TOKEN_DELIMETER);
 		let token_type_id = token_id_iter.next().unwrap().parse().unwrap();
 		// make edition titles nice for showing in wallet
-        // let versioned_token_type = self.token_type_by_id.get(&token_type_id).unwrap();
-        let versioned_token_type_current = self.token_type_by_id.get(&token_type_id);
-        let versioned_token_type = if versioned_token_type_current.is_some() {
-            versioned_token_type_current
-        } else {
-            // we're in the middle of migrating; take from token_types_v1
-            Some(VersionedTokenType::from(VersionedTokenType::Current(TokenType::from(self.token_type_by_id_v1.get(&token_type_id).unwrap()))))
-            // Some(VersionedTokenMetadata::from(VersionedTokenMetadata::Current(TokenMetadata::from(self.tokens_v1().token_metadata_by_id.as_ref().unwrap().get(&token_id).unwrap()))))
-        };
+        let versioned_token_type = self.token_type_by_id.get(&token_type_id);
         let token_type = versioned_token_type_to_token_type(versioned_token_type.unwrap());
 		let mut final_metadata = TokenMetadata {
             title: token_type.metadata.title,
@@ -591,11 +583,9 @@ impl NonFungibleTokenCore for Contract {
         
         let extra = &token_metadata.extra;
         let type_media = final_metadata.clone().media.unwrap();
-        if token_metadata.media.is_some() {
-            // older NFTs (pre-generative upgrade c. 6/15/22) won't have media on the individual token
-            // media cid for this series (directory cid) + token_metadata.media maps to a media asset on IPFS
-            final_metadata.media = Some(format!("{}/{}", type_media.clone(), token_metadata.media.unwrap()));
-        }
+        
+        final_metadata.media = Some(format!("{}/{}", type_media.clone(), token_metadata.media.unwrap()));
+
         if extra.is_some() {
             // media cid for this series (directory cid) + token_metadata.extra maps to a json asset on IPFS
             final_metadata.extra = Some(format!("{}/{}", type_media.clone(), token_metadata.extra.unwrap()));

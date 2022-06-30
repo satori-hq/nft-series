@@ -273,38 +273,35 @@ impl NonFungibleTokenType for Contract {
 		};
 
 		// get the assets vector for this token_type; let the fun begin!
-		let assets = self.token_type_assets_by_id.get(&token_type_id);
+		let mut assets = self.token_type_assets_by_id.get(&token_type_id).expect("No assets");
 
-		if let Some(mut assets) = assets {
-			let random_num = random_u128();
-			let random_asset_idx = random_num % assets.len() as u128;
-			let mut asset_detail = assets.get(random_asset_idx as usize).unwrap().clone();
-			let asset_filename = asset_detail.get(0).unwrap().clone(); // first element is filename of media asset stored inside IPFS directory
-			let mut supply_remaining: u64 = asset_detail.get(1).unwrap().clone().parse().unwrap(); // second element is supply remaining for this asset
-			let extra_filename = asset_detail.get(2).unwrap().clone(); // third element is filename of "extra" (e.g. off-chain json) stored inside IPFS directory
-	
-			// cleanup
-			if supply_remaining > 1 {
-				// if there is supply remaining, decrement supply
-				supply_remaining = supply_remaining - 1;
-				asset_detail.remove(1);
-				asset_detail.insert(1, supply_remaining.to_string());
-				assets.remove(random_asset_idx as usize);
-				assets.insert(random_asset_idx as usize, asset_detail);
-			} else {
-				// no supply left; remove asset from `assets` vector
-				assets.remove(random_asset_idx as usize);
-			}
+		let random_num = random_u128();
+		let random_asset_idx = random_num % assets.len() as u128;
+		let mut asset_detail = assets.get(random_asset_idx as usize).unwrap().clone();
+		let asset_filename = asset_detail.get(0).unwrap().clone(); // first element is filename of media asset stored inside IPFS directory
+		let mut supply_remaining: u64 = asset_detail.get(1).unwrap().clone().parse().unwrap(); // second element is supply remaining for this asset
+		let extra_filename = asset_detail.get(2).unwrap().clone(); // third element is filename of "extra" (e.g. off-chain json) stored inside IPFS directory
 
-			self.token_type_assets_by_id.insert(&token_type_id, &assets);
-	
-			if extra_filename.len() > 0 { // if extra_filename is not an empty string (empty string means no "extra" data is available for this NFT), attach "extra" filename to NFT metadata
-				final_metadata.extra = Some(extra_filename.to_string());
-			};
-			
-			final_metadata.media = Some(asset_filename.to_string());
-
+		// cleanup
+		if supply_remaining > 1 {
+			// if there is supply remaining, decrement supply
+			supply_remaining = supply_remaining - 1;
+			asset_detail.remove(1);
+			asset_detail.insert(1, supply_remaining.to_string());
+			assets.remove(random_asset_idx as usize);
+			assets.insert(random_asset_idx as usize, asset_detail);
+		} else {
+			// no supply left; remove asset from `assets` vector
+			assets.remove(random_asset_idx as usize);
 		}
+
+		self.token_type_assets_by_id.insert(&token_type_id, &assets);
+
+		if extra_filename.len() > 0 { // if extra_filename is not an empty string (empty string means no "extra" data is available for this NFT), attach "extra" filename to NFT metadata
+			final_metadata.extra = Some(extra_filename.to_string());
+		};
+		
+		final_metadata.media = Some(asset_filename.to_string());
 
 		let token_id = format!("{}{}{}", &token_type_id, TOKEN_DELIMETER, num_tokens + 1);
 		token_type.tokens.insert(&token_id);
