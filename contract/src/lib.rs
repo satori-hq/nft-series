@@ -258,17 +258,38 @@ impl Contract {
 		}
 
 		#[payable]
-		pub fn patch_media_and_assets_for_token_type(&mut self, token_type_title: TokenTypeTitle, media: String, assets: Vec<AssetDetail>) {
+		pub fn patch_media_and_assets_for_token_type(&mut self, token_type_title: TokenTypeTitle, media: String, mut assets: Vec<AssetDetail>) {
 			assert!(assets.len() == 1, "Assets must be of length 1"); // existing token types have only one asset
 			let token_type_id = self.token_type_by_title.get(&token_type_title).expect("no type");
 			let mut versioned_token_type = self.token_type_by_id.get(&token_type_id).expect("token type has not been upgraded yet");
 			let mut token_type = versioned_token_type_to_token_type(versioned_token_type);
 
 			token_type.metadata.media = Some(media);
+
+			let num_minted = token_type.tokens.len();
+			let supply_remaining = token_type.metadata.copies.unwrap() - num_minted;
+			log!(format!("supply remaining: {}", supply_remaining));
+
+			assets[0][1] = supply_remaining.to_string();
+			log!(format!("assets: {:#?}", assets));
+
+			// update token metadata
+			token_type.tokens.iter().for_each(|token_id| {
+				log!(format!("updating metadata for token with id {}", token_id));
+				let token_metadata_versioned = self.tokens().token_metadata_by_id.as_ref().unwrap().get(&token_id);
+        let mut token_metadata = versioned_token_metadata_to_token_metadata(token_metadata_versioned.unwrap());
+				token_metadata.media = Some(assets[0][0].clone());
+				self.tokens_mut().token_metadata_by_id
+            .as_mut()
+            .and_then(|by_id| by_id.insert(&token_id, &VersionedTokenMetadata::from(VersionedTokenMetadata::Current(token_metadata))));
+			});
+
+			// update token type
 			versioned_token_type = VersionedTokenType::from(VersionedTokenType::Current(token_type));
 			log!(format!("inserting updated metadata.media for token type {} with id {}", token_type_title, token_type_id));
 			self.token_type_by_id.insert(&token_type_id, &versioned_token_type);
 
+			// update assets for token type
 			log!(format!("inserting assets for token type {} with id {}", token_type_title, token_type_id));
 			self.token_type_assets_by_id.insert(&token_type_id, &assets);
 			log!("done!");
@@ -299,10 +320,13 @@ impl Contract {
     #[init(ignore_state)]
     pub fn migrate() -> Self {
         let old_state: ContractV1 = env::state_read().expect("state read failed"); // was stored at StorageKey::Proposals
-				let new_state = Contract::from(old_state);
-				let versioned_source_metadata = new_state.contract_source_metadata.get().unwrap();
-				let mut source_metadata = versioned_source_metadata_to_source_metadata(versioned_source_metadata);
-				source_metadata.version = Some("v1-v2-migrate".to_string());
+				let mut new_state = Contract::from(old_state);
+				let source_metadata = ContractSourceMetadata {
+					version: Some("v1-v2-migrate".to_string()),
+					commit_sha: Some("cf9d7cda5b371247461354c716e8b318a742f8b0".to_string()),
+					link: Some("https://github.com/satori-hq/nft-series".to_string()),
+				};
+				new_state.contract_source_metadata.set(&VersionedContractSourceMetadata::from(VersionedContractSourceMetadata::Current(source_metadata)));
 				new_state
     }
 
