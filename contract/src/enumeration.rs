@@ -150,7 +150,6 @@ impl NonFungibleTokenEnumeration for Contract {
       metadata: token_type.metadata,
       owner_id: token_type.owner_id,
       royalty: token_type.royalty,
-      asset_count: token_type.asset_count, // TODO: REMOVE THIS
     }
   }
   
@@ -180,7 +179,6 @@ impl NonFungibleTokenEnumeration for Contract {
           metadata: token_type.metadata,
           owner_id: token_type.owner_id,
           royalty: token_type.royalty,
-          asset_count: token_type.asset_count, // TODO: REMOVE THIS
         }
       })
       .collect();
