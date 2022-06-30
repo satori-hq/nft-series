@@ -299,7 +299,11 @@ impl Contract {
     #[init(ignore_state)]
     pub fn migrate() -> Self {
         let old_state: ContractV1 = env::state_read().expect("state read failed"); // was stored at StorageKey::Proposals
-				Contract::from(old_state)
+				let new_state = Contract::from(old_state);
+				let versioned_source_metadata = new_state.contract_source_metadata.get().unwrap();
+				let mut source_metadata = versioned_source_metadata_to_source_metadata(versioned_source_metadata);
+				source_metadata.version = Some("v1-v2-migrate".to_string());
+				new_state
     }
 
 }
