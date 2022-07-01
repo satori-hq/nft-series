@@ -265,6 +265,7 @@ impl Contract {
 			let mut token_type = versioned_token_type_to_token_type(versioned_token_type);
 
 			token_type.metadata.media = Some(media);
+			token_type.cover_asset = Some(assets[0][0].clone()); // filename of media asset will serve as cover_asset
 
 			let num_minted = token_type.tokens.len();
 			let supply_remaining = token_type.metadata.copies.unwrap() - num_minted;

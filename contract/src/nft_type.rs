@@ -18,11 +18,14 @@ pub struct TokenTypeV1 {
 #[derive(BorshDeserialize, BorshSerialize)]
 pub struct TokenType {
 	pub metadata: TokenTypeMetadata,
-	pub asset_count: u64,
 	pub owner_id: AccountId,
 	pub royalty: HashMap<AccountId, u32>,
 	pub tokens: UnorderedSet<TokenId>,
 	pub approved_market_id: Option<AccountId>,
+	// NEW
+	pub asset_count: u64,
+	/// filename for cover asset located within IPFS directory (metadata.media)
+	pub cover_asset: Option<String>,
 }
 
 impl From<TokenTypeV1> for TokenType {
@@ -34,6 +37,7 @@ impl From<TokenTypeV1> for TokenType {
 			tokens: v1.tokens,
 			approved_market_id: v1.approved_market_id,
 			asset_count: 1, // all existing token types have 1 asset
+			cover_asset: None,
 		}
 	}
 }
@@ -49,6 +53,7 @@ pub fn versioned_token_type_to_token_type(versioned_token_type: VersionedTokenTy
 					tokens: v1.tokens,
 					approved_market_id: v1.approved_market_id,
 					asset_count: 1, // all existing token types have 1 asset
+					cover_asset: None,
 				}
 			}
 			// FINISH
@@ -87,6 +92,7 @@ pub trait NonFungibleTokenType {
       metadata: TokenTypeMetadata,
       royalty: HashMap<AccountId, u32>,
 			assets: TokenTypeAssets,
+			cover_asset: String,
   );
 
   /// Cap copies of an existing NFT type/series to currently minted supply
@@ -126,6 +132,7 @@ impl NonFungibleTokenType for Contract {
         metadata: TokenTypeMetadata,
         royalty: HashMap<AccountId, u32>,
 				assets: TokenTypeAssets,
+				cover_asset: String, // filename for cover asset located within IPFS directory (metadata.media)
     ) {
 
 		let initial_storage_usage = env::storage_usage();
@@ -177,6 +184,7 @@ impl NonFungibleTokenType for Contract {
 			),
 			approved_market_id: None,
 			asset_count: assets.len() as u64,
+			cover_asset: Some(cover_asset),
 		};
 		let versioned_token_type = VersionedTokenType::from(VersionedTokenType::Current(token_type));
 
