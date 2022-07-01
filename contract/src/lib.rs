@@ -323,7 +323,7 @@ impl Contract {
 				let mut new_state = Contract::from(old_state);
 				let source_metadata = ContractSourceMetadata {
 					version: Some("v1-v2-migrate".to_string()),
-					commit_sha: Some("cf9d7cda5b371247461354c716e8b318a742f8b0".to_string()),
+					commit_sha: Some("c90de8f007ba520159b98643a37148414d1cb15f".to_string()),
 					link: Some("https://github.com/satori-hq/nft-series".to_string()),
 				};
 				new_state.contract_source_metadata.set(&VersionedContractSourceMetadata::from(VersionedContractSourceMetadata::Current(source_metadata)));
