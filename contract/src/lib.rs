@@ -218,7 +218,7 @@ impl Contract {
 			token_ids
 				.iter()
 				.for_each(|token_id| {
-					log!(format!("Token id to migrate: {}", &token_id));
+					// log!(format!("Token id to migrate: {}", &token_id));
 					let old_metadata = TokenMetadataV1 {
 						title: None,
 						media: None,
@@ -231,11 +231,11 @@ impl Contract {
             .as_mut()
             .and_then(|by_id| {
 							let inserted = by_id.insert(&token_id, &val);
-							log!(format!("Inserted v2 metadata at key/token_id {}", token_id));
+							// log!(format!("Inserted v2 metadata at key/token_id {}", token_id));
 							inserted
 						});
 					self.tokens_v1.token_metadata_by_id.as_mut().unwrap().remove(&token_id);
-					log!(format!("Removed v1 metadata at key/token_id {}", token_id));
+					// log!(format!("Removed v1 metadata at key/token_id {}", token_id));
 				});
 
 			let amt_to_refund = if env::storage_usage() > initial_storage_usage { env::storage_usage() - initial_storage_usage } else { initial_storage_usage - env::storage_usage() };
@@ -250,9 +250,9 @@ impl Contract {
 				let token_type_v1 = self.token_type_by_id_v1.get(&token_type_id).unwrap();
 				let updated_token_type = TokenType::from(token_type_v1);
 				let versioned_token_type = VersionedTokenType::from(VersionedTokenType::Current(updated_token_type));
-				log!(format!("inserting updated token type for token type id {}", token_type_id));
+				// log!(format!("inserting updated token type for token type id {}", token_type_id));
 				self.token_type_by_id.insert(&token_type_id, &versioned_token_type);
-				log!(format!("removing v1 token type for token type id {}", token_type_id));
+				// log!(format!("removing v1 token type for token type id {}", token_type_id));
 				self.token_type_by_id_v1.remove(&token_type_id);
 			})
 		}
@@ -269,14 +269,14 @@ impl Contract {
 
 			let num_minted = token_type.tokens.len();
 			let supply_remaining = token_type.metadata.copies.unwrap() - num_minted;
-			log!(format!("supply remaining: {}", supply_remaining));
+			// log!(format!("supply remaining: {}", supply_remaining));
 
 			assets[0][1] = supply_remaining.to_string();
-			log!(format!("assets: {:#?}", assets));
+			// log!(format!("assets: {:#?}", assets));
 
 			// update token metadata
 			token_type.tokens.iter().for_each(|token_id| {
-				log!(format!("updating metadata for token with id {}", token_id));
+				// log!(format!("updating metadata for token with id {}", token_id));
 				let token_metadata_versioned = self.tokens().token_metadata_by_id.as_ref().unwrap().get(&token_id);
         let mut token_metadata = versioned_token_metadata_to_token_metadata(token_metadata_versioned.unwrap());
 				token_metadata.media = Some(assets[0][0].clone());
@@ -287,13 +287,13 @@ impl Contract {
 
 			// update token type
 			versioned_token_type = VersionedTokenType::from(VersionedTokenType::Current(token_type));
-			log!(format!("inserting updated metadata.media for token type {} with id {}", token_type_title, token_type_id));
+			// log!(format!("inserting updated metadata.media for token type {} with id {}", token_type_title, token_type_id));
 			self.token_type_by_id.insert(&token_type_id, &versioned_token_type);
 
 			// update assets for token type
-			log!(format!("inserting assets for token type {} with id {}", token_type_title, token_type_id));
+			// log!(format!("inserting assets for token type {} with id {}", token_type_title, token_type_id));
 			self.token_type_assets_by_id.insert(&token_type_id, &assets);
-			log!("done!");
+			// log!("done!");
 		}
 
 		/// Update `base_uri` for contract
