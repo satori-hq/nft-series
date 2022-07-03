@@ -118,6 +118,12 @@ impl From<VersionedTokenMetadata> for TokenMetadata {
     }
 }
 
+pub fn versioned_token_metadata_to_token_metadata(versioned_metadata: VersionedTokenMetadata) -> TokenMetadata {
+    match versioned_metadata {
+        VersionedTokenMetadata::Current(current) => current,
+    }
+}
+
 /// Offers details on the contract-level metadata.
 pub trait NonFungibleTokenMetadataProvider {
     fn nft_metadata(&self) -> NFTContractMetadata;
