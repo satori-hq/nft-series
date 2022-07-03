@@ -156,6 +156,8 @@ impl NonFungibleTokenType for Contract {
 
 		assert!(!assets.is_empty(), "assets vector must not be empty");
 
+		assert!(assets.len() <= metadata.copies.unwrap() as usize, "length of assets vector must not exceed copies");
+
 		// sum of total_supply must be equal to `metadata.copies`
 		let mut total_supply = 0 as u64;
 		for asset_detail in assets.clone() {
