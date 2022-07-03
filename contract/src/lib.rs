@@ -164,6 +164,51 @@ impl Contract {
 			}
 		}
 
+		#[payable]
+		pub fn patch_media_and_assets_for_token_type(&mut self, token_type_title: TokenTypeTitle, media: String, mut assets: Vec<AssetDetail>) {
+			let owner_id = env::predecessor_account_id();
+			assert_eq!(owner_id.clone(), self.tokens().owner_id, "Unauthorized");
+			let initial_storage_usage = env::storage_usage();
+			assert!(assets.len() == 1, "Assets must be of length 1"); // existing token types have only one asset
+			let token_type_id = self.token_type_by_title.get(&token_type_title).expect("no type");
+			let mut versioned_token_type = self.token_type_by_id.get(&token_type_id).expect("token type has not been upgraded yet");
+			let mut token_type = versioned_token_type_to_token_type(versioned_token_type);
+
+			token_type.metadata.media = Some(media);
+			token_type.cover_asset = Some(assets[0][0].clone()); // filename of media asset will serve as cover_asset
+
+			let num_minted = token_type.tokens.len();
+			let supply_remaining = token_type.metadata.copies.unwrap() - num_minted;
+			// log!(format!("supply remaining: {}", supply_remaining));
+
+			assets[0][1] = supply_remaining.to_string();
+			// log!(format!("assets: {:#?}", assets));
+
+			// update token metadata
+			token_type.tokens.iter().for_each(|token_id| {
+				// log!(format!("updating metadata for token with id {}", token_id));
+				let token_metadata_versioned = self.tokens().token_metadata_by_id.as_ref().unwrap().get(&token_id);
+        let mut token_metadata = versioned_token_metadata_to_token_metadata(token_metadata_versioned.unwrap());
+				token_metadata.media = Some(assets[0][0].clone());
+				self.tokens_mut().token_metadata_by_id
+            .as_mut()
+            .and_then(|by_id| by_id.insert(&token_id, &VersionedTokenMetadata::from(VersionedTokenMetadata::Current(token_metadata))));
+			});
+
+			// update token type
+			versioned_token_type = VersionedTokenType::from(VersionedTokenType::Current(token_type));
+			// log!(format!("inserting updated metadata.media for token type {} with id {}", token_type_title, token_type_id));
+			self.token_type_by_id.insert(&token_type_id, &versioned_token_type);
+
+			// update assets for token type
+			// log!(format!("inserting assets for token type {} with id {}", token_type_title, token_type_id));
+			self.token_type_assets_by_id.insert(&token_type_id, &assets);
+
+			let amt_to_refund = if env::storage_usage() > initial_storage_usage { env::storage_usage() - initial_storage_usage } else { initial_storage_usage - env::storage_usage() };
+			refund_deposit(amt_to_refund);
+			// log!("done!");
+		}
+
 		/// Update `base_uri` for contract
 		#[payable]
 		pub fn patch_base_uri(
