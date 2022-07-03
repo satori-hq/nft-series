@@ -156,6 +156,8 @@ impl NonFungibleTokenType for Contract {
 
 		assert!(!assets.is_empty(), "assets vector must not be empty");
 
+		assert!(assets.len() <= metadata.copies.unwrap() as usize, "length of assets vector must not exceed copies");
+
 		// sum of total_supply must be equal to `metadata.copies`
 		let mut total_supply = 0 as u64;
 		for asset_detail in assets.clone() { // TODO: may want to ultimately verify each of these elements on Spearmint instead to save on gas costs (also so we don't hit gas limit... FYI 10,000 is fine, but 50,000+ becomes problematic)
