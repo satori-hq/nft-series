@@ -15,6 +15,7 @@ notes
 
 # testing
 /coverage
+/neardev
 
 # production
 /dist
