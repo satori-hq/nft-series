@@ -10,6 +10,10 @@ trait NonFungibleTokenEnumeration {
   /// get token objects for all NFTs on this contract, using `from_index` as starting point (if provided) and limiting count to `limit` (if provided)
   fn nft_tokens(&self, from_index: Option<U128>, limit: Option<u64>) -> Vec<Token>;
 
+  /// get all token IDs on this contract, using `from_index` as starting point (if provided) and limiting count to `limit` (if provided).
+  /// Added for the purposes of upgrading metadata for existing tokens
+  fn nft_token_ids(&self, from_index: Option<U128>, limit: Option<u64>) -> Vec<String>;
+
   /// get number of NFTs owned by a specified owner (across all series/types)
   fn nft_supply_for_owner(self, account_id: AccountId) -> U128;
 
@@ -24,7 +28,7 @@ trait NonFungibleTokenEnumeration {
   /// get info on a specific type/series, by title
   fn nft_get_type(&self, token_type_title: TokenTypeTitle) -> TokenTypeJson;
 
-  /// get type format as (TOKEN_DELIMETER, TITLE_DELIMETER, EDITION_DELIMETER)
+  /// get type format as [TOKEN_DELIMETER, TITLE_DELIMETER, EDITION_DELIMETER]
   fn nft_get_type_format(&self) -> (char, &'static str, &'static str);
 
   /// get info on all types/series contained within this contract
@@ -54,30 +58,52 @@ trait NonFungibleTokenEnumeration {
 impl NonFungibleTokenEnumeration for Contract {
 
   fn nft_total_supply(&self) -> U128 {
-    (self.tokens.owner_by_id.len() as u128).into()
+    (self.tokens().owner_by_id.len() as u128).into()
   }
   
   fn nft_tokens(&self, from_index: Option<U128>, limit: Option<u64>) -> Vec<Token> {
-      // Get starting index, whether or not it was explicitly given.
-      // Defaults to 0 based on the spec:
-      // https://nomicon.io/Standards/NonFungibleToken/Enumeration.html#interface
-      let start_index: u128 = from_index.map(From::from).unwrap_or_default();
-      assert!(
-          (self.tokens.owner_by_id.len() as u128) > start_index,
-          "Out of bounds, please use a smaller from_index."
-      );
-      let limit = limit.map(|v| v as usize).unwrap_or(usize::MAX);
-      assert_ne!(limit, 0, "Cannot provide limit of 0.");
-      self.tokens.owner_by_id
-          .iter()
-          .skip(start_index as usize)
-          .take(limit)
-          .map(|(token_id, _)| self.nft_token(token_id).unwrap())
-          .collect()
+    // Get starting index, whether or not it was explicitly given.
+    // Defaults to 0 based on the spec:
+    // https://nomicon.io/Standards/NonFungibleToken/Enumeration.html#interface
+    let tokens = self.tokens();
+    let start_index: u128 = from_index.map(From::from).unwrap_or_default();
+    assert!(
+        (tokens.owner_by_id.len() as u128) >= start_index,
+        "Out of bounds, please use a smaller from_index."
+    );
+    let limit = limit.map(|v| v as usize).unwrap_or(usize::MAX);
+    assert_ne!(limit, 0, "Cannot provide limit of 0.");
+    tokens.owner_by_id
+        .iter()
+        .skip(start_index as usize)
+        .take(limit)
+        .map(|(token_id, _)| self.nft_token(token_id).unwrap())
+        .collect()
+  }
+
+  /// Added for the purposes of upgrading metadata for existing tokens
+  fn nft_token_ids(&self, from_index: Option<U128>, limit: Option<u64>) -> Vec<String> {
+    // Get starting index, whether or not it was explicitly given.
+    // Defaults to 0 based on the spec:
+    // https://nomicon.io/Standards/NonFungibleToken/Enumeration.html#interface
+    let tokens = self.tokens();
+    let start_index: u128 = from_index.map(From::from).unwrap_or_default();
+    assert!(
+        (tokens.owner_by_id.len() as u128) >= start_index,
+        "Out of bounds, please use a smaller from_index."
+    );
+    let limit = limit.map(|v| v as usize).unwrap_or(usize::MAX);
+    assert_ne!(limit, 0, "Cannot provide limit of 0.");
+    tokens.owner_by_id
+        .iter()
+        .skip(start_index as usize)
+        .take(limit)
+        .map(|(token_id, _)| token_id)
+        .collect()
   }
   
   fn nft_supply_for_owner(self, account_id: AccountId) -> U128 {
-      let tokens_per_owner = self.tokens.tokens_per_owner.expect(
+      let tokens_per_owner = self.tokens().tokens_per_owner.as_ref().expect(
           "Could not find tokens_per_owner when calling a method on the enumeration standard.",
       );
       tokens_per_owner
@@ -92,7 +118,7 @@ impl NonFungibleTokenEnumeration for Contract {
         from_index: Option<U128>,
         limit: Option<u64>,
     ) -> Vec<Token> {
-        let tokens_per_owner = self.tokens.tokens_per_owner.as_ref().expect(
+        let tokens_per_owner = self.tokens().tokens_per_owner.as_ref().expect(
             "Could not find tokens_per_owner when calling a method on the enumeration standard.",
         );
         let token_set = if let Some(token_set) = tokens_per_owner.get(&account_id) {
@@ -113,13 +139,17 @@ impl NonFungibleTokenEnumeration for Contract {
             .take(limit)
             .map(|token_id| self.nft_token(token_id).unwrap())
             .collect()
-    }
+  }
   
   /// CUSTOM VIEWS for typed tokens
   
   fn nft_get_type(&self, token_type_title: TokenTypeTitle) -> TokenTypeJson {
-    let token_type = self.token_type_by_id.get(&self.token_type_by_title.get(&token_type_title).expect("no type")).expect("no type");
-    TokenTypeJson{
+    let versioned_token_type = self.token_type_by_id.get(&self.token_type_by_title.get(&token_type_title).expect("no type title")).expect("no type ID");
+		let mut token_type = versioned_token_type_to_token_type(versioned_token_type);
+    if token_type.cover_asset.is_some() { 
+      token_type.metadata.media = Some(format!("{}/{}", token_type.metadata.media.unwrap(), token_type.cover_asset.unwrap())) 
+    };
+    TokenTypeJson {
       metadata: token_type.metadata,
       owner_id: token_type.owner_id,
       royalty: token_type.royalty,
@@ -143,22 +173,31 @@ impl NonFungibleTokenEnumeration for Contract {
         let limit = limit.map(|v| v as usize).unwrap_or(usize::MAX);
         assert_ne!(limit, 0, "Cannot provide limit of 0.");
         
-    self.token_type_by_id.iter()
-            .skip(start_index as usize)
-            .take(limit)
-            .map(|(_, token_type)| TokenTypeJson{
-        metadata: token_type.metadata,
-        owner_id: token_type.owner_id,
-        royalty: token_type.royalty,
+    let token_types = self.token_type_by_id.iter()
+      .skip(start_index as usize)
+      .take(limit)
+      .map(|(_, versioned_token_type)| {
+        let mut token_type = versioned_token_type_to_token_type(versioned_token_type);
+        if token_type.cover_asset.is_some() { 
+          token_type.metadata.media = Some(format!("{}/{}", token_type.metadata.media.unwrap(), token_type.cover_asset.unwrap())) 
+        };
+        TokenTypeJson {
+          metadata: token_type.metadata,
+          owner_id: token_type.owner_id,
+          royalty: token_type.royalty,
+        }
       })
-            .collect()
+      .collect();
+      token_types
   }
   
   fn nft_supply_for_type(
         &self,
         token_type_title: TokenTypeTitle,
     ) -> U64 {
-        self.token_type_by_id.get(&self.token_type_by_title.get(&token_type_title).expect("no type")).expect("no type").tokens.len().into()
+        let versioned_token_type = self.token_type_by_id.get(&self.token_type_by_title.get(&token_type_title).expect("no type")).expect("no type");
+        let token_type = versioned_token_type_to_token_type(versioned_token_type);
+        token_type.tokens.len().into()
   }
   
   fn nft_tokens_by_type(
@@ -168,7 +207,9 @@ impl NonFungibleTokenEnumeration for Contract {
     limit: Option<u64>
   ) -> Vec<Token> {
     let start_index: u128 = from_index.map(From::from).unwrap_or_default();
-    let tokens = self.token_type_by_id.get(&self.token_type_by_title.get(&token_type_title).expect("no type")).expect("no type").tokens;
+    let versioned_token_type = self.token_type_by_id.get(&self.token_type_by_title.get(&token_type_title).expect("no type")).expect("no type");
+    let token_type = versioned_token_type_to_token_type(versioned_token_type);
+    let tokens = token_type.tokens;
     assert!(
         (tokens.len() as u128) >= start_index,
         "Out of bounds, please use a smaller from_index."
