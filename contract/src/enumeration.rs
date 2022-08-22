@@ -144,7 +144,7 @@ impl NonFungibleTokenEnumeration for Contract {
   /// CUSTOM VIEWS for typed tokens
   
   fn nft_get_type(&self, token_type_title: TokenTypeTitle) -> TokenTypeJson {
-    let versioned_token_type = self.token_type_by_id.get(&self.token_type_by_title.get(&token_type_title).expect("no type")).expect("no type");
+    let versioned_token_type = self.token_type_by_id.get(&self.token_type_by_title.get(&token_type_title).expect("no type title")).expect("no type ID");
 		let mut token_type = versioned_token_type_to_token_type(versioned_token_type);
     if token_type.cover_asset.is_some() { 
       token_type.metadata.media = Some(format!("{}/{}", token_type.metadata.media.unwrap(), token_type.cover_asset.unwrap())) 

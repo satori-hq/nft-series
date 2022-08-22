@@ -227,7 +227,13 @@ impl NonFungibleTokenType for Contract {
 		let mut token_type = versioned_token_type_to_token_type(versioned_token_type);
 
 		if let Some(metadata) = metadata {
-			if metadata.title.is_some() {
+			if metadata.title.is_some() && metadata.title.clone().unwrap() != token_type.metadata.title.clone().unwrap() {
+				assert_eq!(self.token_type_by_title.contains_key(&metadata.title.clone().unwrap()), false, "token_metadata.title already exists");
+
+				// update token_type_by_title
+				self.token_type_by_title.remove(&token_type.metadata.title.clone().unwrap());
+				self.token_type_by_title.insert(&metadata.title.clone().unwrap(), &token_type_id);
+
 				token_type.metadata.title = metadata.title;
 			}
 			// don't validate that description is_some, as description can be none
