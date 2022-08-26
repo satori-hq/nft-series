@@ -180,6 +180,35 @@ describe("NFT Series", function () {
     );
   });
 
+  // nft_update_metadata
+  it("should allow the owner to update 'name' and 'base_uri' fields on contract's metadata", async function () {
+    const current_metadata = await contractAccount.viewFunction(
+        contractId,
+        "nft_metadata"
+    );
+    const new_metadata = {
+        ...current_metadata,
+        name: "Sonar by Satori New Name",
+        base_uri: "https://some-other-domain.io",
+    };
+    await contractAccount.functionCall({
+      contractId,
+      methodName: "nft_update_contract_metadata",
+      args: {
+        new_metadata: new_metadata,
+      },
+      gas,
+      attachedDeposit: parseNearAmount("0.1"),
+    });
+    const updated_metadata = await contractAccount.viewFunction(
+        contractId,
+        "nft_metadata"
+    );
+
+    assert.strictEqual(updated_metadata.name, new_metadata.name);
+    assert.strictEqual(updated_metadata.base_uri, new_metadata.base_uri);
+  });
+
   it("should error if owner attempts to create a type with invalid arguments", async function () {
     typeCopies = 10;
 
