@@ -94,7 +94,6 @@ describe("NFT Series", function () {
     assert.notStrictEqual(state.code_hash, "11111111111111111111111111111111");
   });
 
-  /*
   it("should allow the owner to update the contract's base_uri", async function () {
     const updatedBaseUri = "https://ipfs.io";
 
@@ -364,7 +363,7 @@ describe("NFT Series", function () {
       assert(true);
     }
   });
-*/
+
   it("should allow owner to create a non-generative type", async function () {
     typeCopies = 1000;
     asset_filetypes = ["jpg"];
@@ -401,7 +400,7 @@ describe("NFT Series", function () {
     assert.strictEqual(token_type.royalty[bobId], 1000);
   });
 
-  /*it("should allow the owner to mint correctly formatted tokens of a non-generative type", async function () {
+  it("should allow the owner to mint correctly formatted tokens of a non-generative type", async function () {
     COPIES_TO_MINT = 5;
     for (let i = 0; i < COPIES_TO_MINT; i++) {
       await contractAccount.functionCall({
@@ -818,9 +817,9 @@ describe("NFT Series", function () {
     } catch (e) {
       assert(true);
     }
-  });*/
+  });
 
-  // @todo - nft_batch_mint_type - check that this makes sense
+  // nft_batch_mint_type
   it("should NOT allow more than 10 receiver", async function () {
     let receiver_ids = [];
     for (let i = 0; i < 1000; i++) {
@@ -844,7 +843,7 @@ describe("NFT Series", function () {
     }
   });
 
-/*  it("should allow the owner cap the copies to whatever is already minted", async function () {
+  it("should allow the owner cap the copies to whatever is already minted", async function () {
     const supply = await contractAccount.viewFunction(
       contractId,
       "nft_supply_for_type",
@@ -1053,5 +1052,5 @@ describe("NFT Series", function () {
       res.payout[key] = formatNearAmount(res.payout[key]);
     }
     assert.deepEqual(res.payout, expected);
-  });*/
+  });
 });
