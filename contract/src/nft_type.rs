@@ -1,4 +1,5 @@
 use crate::*;
+use near_sdk::{log};
 
 pub type TokenTypeId = u64;
 pub type TokenTypeTitle = String;
@@ -116,6 +117,13 @@ pub trait NonFungibleTokenType {
 		receiver_id: AccountId,
     _metadata: Option<TokenMetadata>,
 ) -> Token;
+
+	/// Mint a batch of NFTs for specified type/series
+	fn nft_batch_mint_type(
+		&mut self,
+		token_type_title: TokenTypeTitle,
+		receiver_ids: Vec<AccountId>
+	) -> Vec<Token>;
 
 	/// Delete an NFT type/series that is empty (no NFTs minted yet)
 	fn nft_delete_type(
@@ -343,6 +351,34 @@ impl NonFungibleTokenType for Contract {
 		})).as_ref());
 			
 		token
+	}
+
+	#[payable]
+	fn nft_batch_mint_type(
+		&mut self,
+		token_type_title: TokenTypeTitle,
+		receiver_ids: Vec<AccountId>
+	) -> Vec<Token>
+	{
+		// Don't allow batch minting for token types with more than one asset because the same random
+		// number seed will be used for all mints
+		let token_type_id = self.token_type_by_title.get(&token_type_title).expect("no type");
+		let versioned_token_type = self.token_type_by_id.get(&token_type_id).expect("no token");
+		let token_type = versioned_token_type_to_token_type(versioned_token_type);
+		let asset_count = token_type.asset_count;
+		log!(format!("asset_count: {}", asset_count));
+		assert!(asset_count == 1, "batch minting not allowed for token types with more than one asset");
+
+		assert_eq!(env::predecessor_account_id(), self.tokens().owner_id, "Unauthorized");
+		let mut tokens = Vec::new();
+
+		// Check length of receiver_ids
+		assert!(receiver_ids.len() <= 1000, "receiver_ids must be less than or equal to 1000");
+
+		for receiver_id in receiver_ids {
+			tokens.push(self.nft_mint_type(token_type_title.clone(), receiver_id.clone(), None));
+		}
+		tokens
 	}
 
 	#[payable]

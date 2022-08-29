@@ -127,11 +127,25 @@ pub fn versioned_token_metadata_to_token_metadata(versioned_metadata: VersionedT
 /// Offers details on the contract-level metadata.
 pub trait NonFungibleTokenMetadataProvider {
     fn nft_metadata(&self) -> NFTContractMetadata;
+    fn nft_update_contract_metadata(&mut self, metadata: NFTContractMetadata) -> NFTContractMetadata;
 }
 
 #[near_bindgen]
 impl NonFungibleTokenMetadataProvider for Contract {
     fn nft_metadata(&self) -> NFTContractMetadata {
+        self.metadata.get().unwrap()
+    }
+
+    #[payable]
+    fn nft_update_contract_metadata(&mut self, new_metadata: NFTContractMetadata) -> NFTContractMetadata {
+        let initial_storage_usage = env::storage_usage();
+        let owner_id = env::predecessor_account_id();
+        assert_eq!(owner_id.clone(), self.tokens().owner_id, "Unauthorized");
+
+        self.metadata.set(&new_metadata);
+
+        let amt_to_refund = if env::storage_usage() > initial_storage_usage { env::storage_usage() - initial_storage_usage } else { initial_storage_usage - env::storage_usage() };
+        refund_deposit(amt_to_refund);
         self.metadata.get().unwrap()
     }
 }
