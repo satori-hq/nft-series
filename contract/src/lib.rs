@@ -124,7 +124,7 @@ impl Contract {
         assert!(!env::state_exists(), "Already initialized");
         metadata.assert_valid();
 				let source_metadata = ContractSourceMetadata {
-					version: Some("v2".to_string()), // THIS MUST BE MANUALLY UPDATED ON EACH VERSION CHANGE
+					version: Some("v2.1.0".to_string()), // THIS MUST BE MANUALLY UPDATED ON EACH VERSION CHANGE
 					commit_sha: Some(commit_sha), // SHA OF HEAD COMMIT IS QUERIED BY CONTRACT CALLER (SPEARMINT API)
 					link: Some("https://github.com/satori-hq/nft-series".to_string()),
 				};
